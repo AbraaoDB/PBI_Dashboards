@@ -1,0 +1,1208 @@
+Prompt 1 - Importação, Power Query e modelo estrela  
+
+
+Use a skill @dax-creation-expert para preparar do zero uma base logística no Power BI Desktop aberto.
+
+
+Projeto Power BI: Logística Brasil Teste
+
+Use a conexão MCP para trabalhar diretamente no Power BI aberto.
+
+
+Nesta primeira etapa, faça somente diagnóstico, Power Query e modelagem.
+
+
+1. Antes de alterar o projeto, inspecione o arquivo e apresente:
+
+
+- planilhas ou tabelas encontradas;
+
+- quantidade de linhas e colunas;
+
+- granularidade real da base;
+
+- chave do pedido e possível chave da linha/item;
+
+- duplicidades na granularidade correta;
+
+- colunas de data e função de cada data;
+
+- dimensões disponíveis;
+
+- métricas numéricas;
+
+- tipos incorretos;
+
+- valores nulos, vazios e erros;
+
+- quantidade de pedidos ainda não entregues;
+
+- possíveis inconsistências entre status e datas.
+
+
+Não assuma que uma linha representa um pedido. Verifique se a base está no nível de pedido, item, ocorrência ou etapa.
+
+
+2. Importe e trate a base no Power Query.
+
+
+- Crie uma consulta de staging rastreável.
+
+- Padronize nomes e tipos sem alterar o significado.
+
+- Preserve todos os pedidos ainda não entregues.
+
+- Não preencha artificialmente datas de entrega.
+
+- Não exclua registros sem explicar e quantificar.
+
+- Só remova duplicidades quando a equivalência estiver comprovada.
+
+- Prefira flags de qualidade a apagar registros.
+
+- Crie lead time ou dias de atraso somente se existirem as datas necessárias e a regra estiver comprovada.
+
+- Registre a quantidade de linhas antes e depois do tratamento.
+
+
+3. Crie um modelo estrela.
+
+
+- Crie uma tabela fato na granularidade validada.
+
+- Crie somente dimensões necessárias e sustentadas pela base.
+
+- Considere, quando existirem campos compatíveis: transportadora, região de destino, modal, produto, categoria, cliente, origem e status.
+
+- Garanta chave única no lado 1.
+
+- Configure relacionamentos 1 para muitos.
+
+- Use filtro em direção única da dimensão para a fato.
+
+- Não crie relacionamentos bidirecionais ou muitos-para-muitos sem justificativa.
+
+- Confirme que não há caminhos ambíguos.
+
+
+4. Crie e marque uma dCalendario.
+
+
+- Use um intervalo compatível com as datas da base.
+
+- Crie os atributos necessários para análise temporal e ordenação.
+
+- Defina e documente a data ativa principal.
+
+- Para outras datas, use relacionamento inativo ou dimensão de papel quando necessário.
+
+- Não deixe mais de um caminho ativo ambíguo.
+
+
+5. Valide a modelagem.
+
+
+- Reconcilie a quantidade de registros com a fonte.
+
+- Verifique duplicidades na chave.
+
+- Confirme a unicidade das dimensões.
+
+- Teste se cada dimensão filtra a fato.
+
+- Verifique registros órfãos.
+
+- Confirme relacionamentos 1:* e direção única.
+
+- Confirme a marcação da dCalendario.
+
+- Execute consultas de validação quando possível.
+
+
+Não crie medidas DAX, JSON, HTML, CSS, JavaScript, KPIs ou visuais nesta etapa.
+
+
+Ao final, apresente:
+
+
+- diagnóstico da base;
+
+- granularidade e chaves;
+
+- tratamentos realizados;
+
+- quantidade de registros antes e depois;
+
+- fato e dimensões criadas;
+
+- calendário e data ativa;
+
+- relacionamentos configurados;
+
+- problemas encontrados;
+
+- regras de negócio ainda não confirmadas;
+
+- limitações da modelagem.
+
+
+Não salve nem sobrescreva o PBIX sem minha autorização.
+
+
+
+Prompt 2 - Medidas DAX e análises logísticas 
+
+
+Use a skill @dax-creation-expert para criar e validar as medidas DAX do modelo logístico preparado na etapa anterior.
+
+
+Use a conexão MCP para trabalhar diretamente no Power BI aberto.
+
+
+Antes de criar medidas:
+
+
+1. Leia o modelo atual.
+
+2. Liste a tabela fato, dimensões, colunas, medidas e relacionamentos.
+
+3. Confirme a granularidade da fato.
+
+4. Confirme a chave usada para contar pedidos.
+
+5. Confirme a data ligada ativamente à dCalendario.
+
+6. Verifique se valores financeiros estão repetidos em linhas de item.
+
+7. Liste quais KPIs podem ser criados com segurança.
+
+8. Liste quais KPIs dependem de regra ou campo ausente.
+
+
+Não invente tabelas, campos, status, metas, limiares ou regras.
+
+
+Crie as medidas em camadas e organize-as em pastas de exibição.
+
+
+Camada Base, quando houver campos compatíveis:
+
+
+- Total de pedidos;
+
+- Quantidade de itens;
+
+- Receita ou valor dos pedidos;
+
+- Frete;
+
+- Custo logístico;
+
+- Emissões de CO₂;
+
+- quantidade de avaliações válidas.
+
+
+Camada de Serviço:
+
+
+- Pedidos entregues;
+
+- Pedidos elegíveis para OTIF;
+
+- Pedidos On Time;
+
+- Pedidos In Full;
+
+- Pedidos OTIF;
+
+- OTIF percentual;
+
+- Pedidos atrasados;
+
+- Percentual de pedidos atrasados;
+
+- Lead time médio;
+
+- Quantidade de lead times válidos;
+
+- Atraso médio;
+
+- Quantidade de atrasos válidos.
+
+
+Camada de Qualidade:
+
+
+- Pedidos ou itens com devolução;
+
+- Devoluções percentual;
+
+- Pedidos ou itens com avaria;
+
+- Avarias percentual;
+
+- Pedidos ou itens extraviados;
+
+- Extravios percentual;
+
+- Nota média do cliente.
+
+
+Camada Derivada:
+
+
+- Custo logístico por pedido;
+
+- Custo logístico como percentual da receita;
+
+- quantidade média por pedido;
+
+- custo médio por transportadora ou região somente por meio do contexto de filtro, sem fixar dimensões na medida.
+
+
+Camada Temporal para os principais KPIs:
+
+
+- valor do mês anterior;
+
+- variação absoluta;
+
+- variação percentual;
+
+- mediana mensal do OTIF;
+
+- tendência mensal de pedidos, OTIF, custo, lead time e emissões.
+
+
+Regras obrigatórias:
+
+
+- Use DISTINCTCOUNT para pedidos quando a fato estiver no nível de item.
+
+- Use DIVIDE para percentuais.
+
+- Preserve os filtros externos.
+
+- Não use ALL() ou REMOVEFILTERS() sem justificativa.
+
+- OTIF exige On Time e In Full no mesmo pedido.
+
+- Se a fato estiver no nível de item, consolide o OTIF por pedido.
+
+- Pedidos pendentes devem permanecer na fato.
+
+- Não inclua entrega vazia no lead time de entregas concluídas.
+
+- Não classifique pendentes como atrasados usando TODAY() sem regra confirmada.
+
+- Confirme se atraso médio considera apenas atrasados ou todos os entregues.
+
+- Confirme se devolução, avaria e extravio contam pedidos, itens ou ocorrências.
+
+- Não crie uma métrica que não possa ser sustentada com segurança.
+
+
+Valide antes de concluir:
+
+
+- compare com uma tabela detalhada;
+
+- teste sem filtros;
+
+- teste com filtro de data;
+
+- teste com região;
+
+- teste com transportadora;
+
+- teste com modal e categoria;
+
+- valide totais, denominadores e percentuais;
+
+- confirme que percentuais aplicáveis ficam entre 0% e 100%;
+
+- confirme que pedidos OTIF não superam pedidos elegíveis;
+
+- confirme que pedidos elegíveis não superam o total de pedidos;
+
+- teste cenário sem entregues;
+
+- teste cenário sem mês anterior;
+
+- teste denominador zero;
+
+- execute consultas DAX de validação.
+
+
+Ao final, apresente:
+
+
+- medidas criadas por camada;
+
+- regra de negócio de cada medida;
+
+- numerador e denominador;
+
+- campos utilizados;
+
+- data usada;
+
+- comportamento para pendentes e valores vazios;
+
+- testes executados;
+
+- resultados das reconciliações;
+
+- medidas não criadas e motivo;
+
+- limitações ainda dependentes de validação do negócio.
+
+
+Não crie JSON, HTML, CSS, JavaScript ou visuais nesta etapa.
+
+
+Não salve nem sobrescreva o PBIX sem minha autorização.
+
+
+
+
+Prompt 3 - Medida JSON Gold Dashboard Logistica 
+
+
+Use a skill @dax-creation-expert para criar a camada Gold do dashboard logístico.
+
+
+Use a conexão MCP para trabalhar diretamente no Power BI aberto.
+
+
+Antes de criar o JSON:
+
+
+1. Leia o modelo e todas as medidas validadas.
+
+2. Confirme que as medidas nativas reconciliam com a base.
+
+3. Liste as métricas e dimensões realmente disponíveis.
+
+4. Confirme a granularidade necessária para os futuros filtros internos.
+
+5. Não recrie no JavaScript ou no JSON regras já existentes como medidas.
+
+6. Se houver uma versão anterior da medida, crie backup oculto antes de alterá-la.
+
+
+Crie uma medida chamada exatamente:
+
+
+JSON Gold Dashboard Logistica
+
+
+Ela será a única fonte de dados das futuras medidas HTML DAX.
+
+
+Estrutura obrigatória, somente quando os dados existirem:
+
+
+1. meta
+
+
+- período analisado;
+
+- data inicial;
+
+- data final;
+
+- quantidade de meses;
+
+- descrição objetiva do contexto filtrado;
+
+- fonte dos dados, se disponível no modelo.
+
+
+2. kpis
+
+
+- pedidos;
+
+- quantidade de itens;
+
+- receita;
+
+- custo logístico;
+
+- custo por pedido;
+
+- custo como percentual da receita;
+
+- pedidos entregues;
+
+- pedidos atrasados;
+
+- percentual de atrasados;
+
+- pedidos OTIF;
+
+- OTIF percentual;
+
+- lead time médio;
+
+- atraso médio;
+
+- devoluções;
+
+- avarias;
+
+- extravios;
+
+- emissões de CO₂;
+
+- nota média do cliente;
+
+- variações contra o mês anterior dos principais KPIs.
+
+
+3. séries e rankings
+
+
+- tendência mensal de pedidos, OTIF, custo, lead time e emissões;
+
+- desempenho por transportadora;
+
+- desempenho por região;
+
+- desempenho por modal;
+
+- desempenho por categoria;
+
+- principais produtos;
+
+- principais motivos de atraso;
+
+- status de entrega, quando disponível.
+
+
+4. baseInterativa
+
+
+Inclua somente os campos necessários para que o futuro HTML aplique filtros internos e recalcule todos os componentes.
+
+
+Use nomes curtos e documentados, quando existirem:
+
+
+- m: mês no padrão YYYY-MM;
+
+- r: região;
+
+- t: transportadora;
+
+- o: modal;
+
+- c: categoria;
+
+- pr: produto;
+
+- qt: quantidade;
+
+- p: contagem ou indicador de pedido;
+
+- q: pedidos OTIF ou indicador OTIF consolidado;
+
+- cp: custo;
+
+- lt: soma do lead time válido;
+
+- ln: quantidade de observações válidas de lead time;
+
+- co: emissões de CO₂;
+
+- at: soma dos dias de atraso válidos;
+
+- an: quantidade de observações válidas de atraso;
+
+- dv: devoluções;
+
+- av: avarias;
+
+- ex: extravios.
+
+
+Atenção à granularidade:
+
+
+- Se a fato estiver no nível de item, não use p=1 em todas as linhas.
+
+- Evite duplicar pedidos por produto ou categoria.
+
+- Pré-agregue por pedido e pelas dimensões necessárias quando isso preservar os cálculos.
+
+- Não envie identificadores pessoais ou campos sem uso.
+
+- Se o payload ficar excessivo, proponha pré-agregação antes de continuar.
+
+
+Regras obrigatórias:
+
+
+- Gere JSON válido.
+
+- Use ponto como separador decimal nos números crus.
+
+- Não coloque aspas em números usados para cálculo.
+
+- Escape aspas, barras, retorno de carro e quebra de linha.
+
+- Preserve filtros externos.
+
+- Não use ALL(fato) para construir rankings ou séries.
+
+- Use medidas validadas para KPIs.
+
+- Omita métricas não disponíveis em vez de retornar dados fictícios.
+
+- Não inclua HTML, CSS ou JavaScript.
+
+- Não dependa de APIs, CDNs ou fontes externas.
+
+
+Valide:
+
+
+1. sem filtros;
+
+2. com filtro de mês;
+
+3. com filtro de região;
+
+4. com filtro de transportadora;
+
+5. com filtro de categoria;
+
+6. em contexto sem registros;
+
+7. início com { e término com };
+
+8. parse válido;
+
+9. números crus com ponto decimal;
+
+10. totais do JSON iguais às medidas nativas;
+
+11. estrutura e campos da baseInterativa;
+
+12. tamanho usando LEN([JSON Gold Dashboard Logistica]);
+
+13. escape de textos com aspas, barras e quebras de linha;
+
+14. consulta DAX de validação.
+
+
+Ao final, apresente:
+
+
+- estrutura final do JSON;
+
+- medidas utilizadas;
+
+- arrays criados;
+
+- campos da baseInterativa e significado;
+
+- granularidade escolhida;
+
+- testes e reconciliações;
+
+- tamanho da medida;
+
+- limitações;
+
+- confirmação de que nenhuma medida HTML foi criada.
+
+
+Não salve nem sobrescreva o PBIX sem minha autorização.
+
+
+
+Prompt 4 - Página principal e filtros interativos 
+
+
+Use a skill @dataviz-html-dax para criar a página principal de análise do dashboard logístico.
+
+
+Use a conexão MCP para trabalhar diretamente no Power BI aberto.
+
+
+A única fonte de dados do visual deve ser:
+
+
+[JSON Gold Dashboard Logistica]
+
+
+Antes de criar o HTML:
+
+
+1. Leia e valide o JSON Gold.
+
+2. Liste meta, KPIs, séries, rankings e campos da baseInterativa.
+
+3. Confirme quais filtros internos podem ser recalculados com segurança.
+
+4. Confirme que o JSON respeita os filtros externos do Power BI.
+
+5. Não altere medidas de negócio, modelo, relacionamentos ou JSON nesta etapa.
+
+6. Se a medida HTML já existir, crie backup oculto antes de atualizá-la.
+
+
+Crie uma medida chamada:
+
+
+HTML Dashboard Logistica
+
+
+Construa uma página executiva, com foco em exploração e tomada de decisão.
+
+
+Estrutura principal:
+
+
+- header executivo com nome do painel, fonte e data/hora da atualização;
+
+- seletor Dark/Light;
+
+- filtros internos de mês, região e categoria;
+
+- inclua transportadora e modal se existirem na baseInterativa;
+
+- botão Limpar filtros;
+
+- faixa reservada para ticker;
+
+- cards de pedidos, OTIF, custo logístico, lead time e emissões;
+
+- gráfico mensal com barras de pedidos e linha de OTIF;
+
+- painel de leitura executiva;
+
+- OTIF por transportadora;
+
+- custo por região;
+
+- risco por modal;
+
+- tabela comparativa de transportadoras.
+
+
+Filtros internos:
+
+
+- Construa as opções a partir da própria baseInterativa.
+
+- Os filtros devem funcionar em conjunto.
+
+- Mantenha as escolhas atuais.
+
+- Recalcule todos os cards, gráficos, rankings, ticker, tabela, tooltips e análises.
+
+- Não atualize somente uma parte do dashboard.
+
+- O botão Limpar filtros deve redefinir apenas os filtros internos.
+
+- Preserve filtros externos do relatório.
+
+- Mostre estado vazio quando a seleção não retornar dados.
+
+
+Design:
+
+
+- Use classes CSS prefixadas, como ld-.
+
+- Defina todos os tokens visuais antes dos componentes.
+
+- Crie modo Light limpo e modo Dark no estilo central de controle tecnológico.
+
+- Use neon apenas como acento.
+
+- Garanta contraste de textos, barras e eixos.
+
+- Não use bibliotecas externas, CDNs, imagens remotas ou APIs.
+
+- Preserve português e acentuação em UTF-8.
+
+- Crie responsividade sem rolagem horizontal acidental.
+
+
+Validação:
+
+
+- JSON válido;
+
+- renderização sem erros;
+
+- estado Ready da medida;
+
+- teste sem filtros;
+
+- teste de cada filtro isoladamente;
+
+- teste combinando mês, região e categoria;
+
+- teste do botão Limpar filtros;
+
+- totais iguais às medidas nativas;
+
+- estado sem registros;
+
+- alternância Light/Dark;
+
+- responsividade;
+
+- consulta DAX de validação;
+
+- validação visual no navegador ou visual HTML compatível.
+
+
+Se a conexão MCP não permitir inserir o visual na página, crie e valide a medida e informe exatamente qual visual nativo/customizado deve receber a medida.
+
+
+Não salve nem sobrescreva o PBIX sem minha autorização.
+
+
+Prompt 5 — Análises dinâmicas e inteligência de negócio  
+
+
+Use a skill @dataviz-html-dax para evoluir a medida HTML Dashboard Logistica criada na etapa anterior.
+
+
+Use a conexão MCP no Power BI aberto.
+
+
+Antes de alterar:
+
+
+- leia a medida atual e o JSON Gold;
+
+- crie um backup oculto da medida funcional;
+
+- preserve todos os filtros, temas, cálculos, tooltips e elementos já funcionais;
+
+- altere apenas a camada HTML, CSS e JavaScript;
+
+- não modifique regras de negócio ou o JSON sem demonstrar que falta um campo indispensável.
+
+
+Inclua análises dinâmicas orientadas à decisão:
+
+
+1. Leitura executiva
+
+
+- identifique a principal transportadora que exige atenção;
+
+- identifique a região de maior risco ou pior serviço;
+
+- mostre atraso médio, principal motivo de atraso e indicadores de qualidade;
+
+- recalcule o texto conforme todos os filtros;
+
+- use linguagem como “requer atenção” ou “concentra ocorrências”;
+
+- não afirme causalidade não comprovada.
+
+
+2. Gráfico mensal
+
+
+- barras para pedidos;
+
+- linha para OTIF;
+
+- eixos nomeados;
+
+- linha tracejada para a mediana mensal do OTIF;
+
+- mediana recalculada conforme filtros;
+
+- tooltip própria com mês, pedidos, OTIF, custo e lead time;
+
+- informe de maneira sutil se o OTIF do mês está acima ou abaixo da média do contexto;
+
+- trate cenário com um único mês.
+
+
+3. Rankings
+
+
+- OTIF por transportadora, do menor para o maior;
+
+- custo por região;
+
+- principais produtos;
+
+- motivos de atraso, quando disponíveis;
+
+- tooltips com contexto útil;
+
+- barras com espaço suficiente para leitura.
+
+
+4. Risco por modal
+
+
+- mostre pedidos, OTIF e lead time;
+
+- classifique status somente usando limites confirmados no JSON ou na regra de negócio;
+
+- aplique fundo semântico para saudável, atenção e crítico;
+
+- inclua um alerta com a quantidade de modais críticos;
+
+- mantenha espaço entre os cards.
+
+
+5. Comparativo das transportadoras
+
+
+- use título e subtítulo compreensíveis para usuários não técnicos;
+
+- permita ordenação ao clicar nos títulos das colunas;
+
+- inclua estado visual de ordenação crescente e decrescente;
+
+- atualize aria-sort;
+
+- ordene por transportadora, pedidos, OTIF, prazo e custo;
+
+- recalcule a tabela conforme filtros.
+
+
+Valide:
+
+
+- leitura executiva em diferentes filtros;
+
+- mediana sem filtro e com região;
+
+- tooltip em meses centrais e nas extremidades;
+
+- filtros de mês, região, categoria, transportadora e modal;
+
+- totais e percentuais;
+
+- ordenação de todas as colunas;
+
+- navegação por teclado;
+
+- comunicação de status além da cor;
+
+- estados vazio e erro;
+
+- ausência de erros JavaScript;
+
+- consulta DAX e renderização visual.
+
+
+Não salve nem sobrescreva o PBIX sem minha autorização.
+
+
+
+Prompt 6 — Efeitos visuais, ticker e capa 
+
+
+Use a skill @dataviz-html-dax para finalizar o dashboard logístico e criar sua página de capa.
+
+
+Use a conexão MCP no Power BI aberto.
+
+
+Trabalhe em duas medidas:
+
+
+- HTML Dashboard Logistica;
+
+- HTML Capa Logistica.
+
+
+Antes de alterar qualquer medida:
+
+
+- leia a versão atual;
+
+- crie backup oculto com nome único;
+
+- preserve JSON Gold, filtros, temas, cálculos, tooltips, tabela, ordenação e análises;
+
+- não salve o PBIX.
+
+
+Parte 1 — Acabamento da página de análise
+
+
+1. Header logístico
+
+
+- crie uma estrada tecnológica no header;
+
+- inclua pequenos carros ou marcadores semelhantes a veículos em movimento;
+
+- use somente CSS/HTML local;
+
+- marque elementos decorativos como aria-hidden;
+
+- use pointer-events: none;
+
+- não permita que a estrada cubra título, fonte, filtros ou botões.
+
+
+2. Ticker de produtos
+
+
+- use os produtos e quantidades existentes na baseInterativa;
+
+- mostre poucos produtos mais vendidos;
+
+- numere o ranking;
+
+- recalcule conforme filtros;
+
+- use contraste forte nos modos Light e Dark;
+
+- pause no hover e no foco;
+
+- evite deslocamento do layout.
+
+
+3. Movimento e interação
+
+
+- anime a entrada das barras e linhas uma vez por renderização;
+
+- permita leve expansão ou destaque no hover;
+
+- use movimento discreto nos cards;- traga variações % nos cards principais indicando com cores verde para crescimento e vermelha quando houver queda
+
+- faça apenas o mini-card de variação negativa ou alerta crítico pulsar de forma leve e finita;
+
+- não faça o card inteiro piscar;
+
+- não use setInterval para count-up;
+
+- respeite prefers-reduced-motion;
+
+- preserve os valores finais exatos do JSON.
+
+
+4. Tooltips
+
+
+- mantenha tooltip HTML própria;
+
+- evite title redundante que acione tooltip nativa;
+
+- esconda tooltip ao sair, perder foco ou usar teclado;
+
+- limite seu posicionamento ao contêiner;
+
+- não cubra eixos e rótulos.
+
+
+Parte 2 — Construção da capa
+
+
+Crie a medida:
+
+
+HTML Capa Logistica
+
+
+A capa deve usar [JSON Gold Dashboard Logistica] como única fonte de dados.
+
+
+Estrutura:
+
+
+- fundo Dark semelhante a uma central de controle moderna;
+
+- identidade “Logística Brasil”;
+
+- frase principal de impacto sobre logística e tomada de decisão;
+
+- efeito de digitação leve, executado uma vez por renderização;
+
+- prévia executiva do OTIF global;
+
+- anel de progresso do OTIF;
+
+- percentual carregando de zero até o valor final;
+
+- anel e número sincronizados;
+
+- pequena tendência mensal do OTIF;
+
+- variação contra o mês anterior;
+
+- pedidos analisados;
+
+- lead time médio;
+
+- período disponível;
+
+- fonte e atualização no horário Brasil/BR;
+
+- estrada com carros em movimento;
+
+- área reservada no canto inferior direito para um botão nativo do Power BI.
+
+
+Regras da animação do OTIF:
+
+
+- use requestAnimationFrame;
+
+- não altere o cálculo do KPI;
+
+- limite o resultado entre 0% e 100%;
+
+- finalize com o número exato formatado em pt-BR;
+
+- mostre o valor final imediatamente quando prefers-reduced-motion estiver ativo;
+
+- não use loop infinito;
+
+- documente que o Power BI pode repetir a entrada quando recriar o visual.
+
+
+Use prefixos diferentes para evitar conflito:
+
+
+- ld- para a página de análise;
+
+- cp- para a capa.
+
+
+Validação final:
+
+
+- acentuação UTF-8;
+
+- medidas em estado Ready;
+
+- consultas DAX;
+
+- JSON preservado;
+
+- renderização Light e Dark;
+
+- movimento desligado em reduced-motion;
+
+- filtros atualizando ticker e análises;
+
+- tabela mantendo ordenação;
+
+- tooltip sem duplicidade;
+
+- capa sem sobrepor o espaço do botão;
+
+- teste em largura desktop e responsiva;
+
+- estado vazio e erro;
+
+- ausência de APIs, CDNs e dependências externas;
+
+- comparação visual com a referência do projeto Teste Logística.
+
+
+Se o MCP não puder criar a navegação nativa, deixe o espaço preparado e informe que o botão “Ir para Análise” deve ser inserido manualmente no Power BI.
+
+
+Ao final, liste tudo que foi criado, alterado, preservado e validado.
+
+
+Não salve nem sobrescreva o PBIX sem minha autorização.
+
+
+Prompt 7 — Gráficos Sparklines
+
+
+Quero adicionar sparklines aos cards de KPI já existentes, sem alterar a estrutura geral, as dimensões, a identidade visual ou a disposição atual dos elementos.
+
+
+Os cards atuais possuem:
+
+
+- Título do indicador no topo.
+
+- Valor principal em destaque.
+
+- Texto auxiliar abaixo do valor.
+
+- Badge de variação em relação ao mês anterior.
+
+- Uma linha colorida fina na base de alguns cards.
+
+- Fundo branco, bordas arredondadas e sombra discreta.
+
+
+Faça apenas uma evolução visual cuidadosa.
+
+Adicione um sparkline horizontal na parte inferior de cada card, entre o texto auxiliar e o badge de variação, ocupando aproximadamente 75% a 85% da largura disponível.
+
+
+Diretrizes:
+
+
+- Não aumente significativamente a altura dos cards.
+
+- Preserve o valor principal como elemento de maior destaque.
+
+- Não mova nem remova os textos atuais.
+
+- Não altere os números, indicadores ou cálculos existentes.
+
+- Não coloque o gráfico atrás do texto.
+
+- O sparkline deve ser discreto, com altura aproximada entre 24 e 32 px.
+
+- Não exiba eixo, legenda, grade, título ou rótulos.
+
+- Utilize linha fina, entre 1,5 e 2 px.
+
+- Use curvas levemente suavizadas.
+
+- Adicione um preenchimento em degradê muito sutil abaixo da linha.
+
+- Utilize a cor principal do dashboard, em azul-petróleo, para a linha.
+
+- Nos indicadores negativos, não é necessário deixar toda a linha vermelha. Mantenha o sparkline na cor principal e preserve o vermelho apenas no badge de variação.
+
+- Destaque somente o último ponto da série com um pequeno círculo.
+
+- Mantenha boa margem entre o sparkline, o texto auxiliar e o badge.
+
+- O gráfico deve respeitar o recorte e os filtros aplicados no dashboard.
+
+- O período representado deve ser o mesmo para todos os cards, preferencialmente os últimos 12 meses ou os períodos disponíveis no filtro atual.
+
+- O resultado deve ser minimalista, corporativo e coerente com o design atual.
+
+
+Ajuste sugerido para a organização interna de cada card:
+
+
+1. Título.
+
+2. Valor principal.
+
+3. Texto auxiliar.
+
+4. Sparkline.
+
+5. Badge de comparação com o mês anterior.
+
+
+Nos cards de Pedidos, OTIF, Custo Logístico, Lead Time e Emissões, crie uma série temporal específica para cada indicador.
+
+
+Não redesenhe completamente os cards. Apenas insira os sparklines de maneira harmoniosa e mantenha todas as funcionalidades existentes.
