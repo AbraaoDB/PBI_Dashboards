@@ -1,0 +1,168 @@
+table campeonato-brasileiro-full
+	lineageTag: 73d77297-b826-4063-9a51-e86866b38dd2
+
+	column ID
+		dataType: int64
+		formatString: 0
+		lineageTag: ba0dd5ed-0f65-4ccb-ae67-3a652c185e7f
+		summarizeBy: count
+		sourceColumn: ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column rodata
+		dataType: int64
+		formatString: 0
+		lineageTag: 0e34798d-f74e-4ab0-8013-c54333e48afb
+		summarizeBy: sum
+		sourceColumn: rodata
+
+		annotation SummarizationSetBy = Automatic
+
+	column data
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 1fc572c0-66b5-4c3c-880f-5fdbab7a2e88
+		summarizeBy: none
+		sourceColumn: data
+
+		variation Variation
+			isDefault
+			relationship: 4364f999-b5ea-4bf9-ac6e-2fcb761c7d15
+			defaultHierarchy: LocalDateTable_28b3f9df-8d5b-41aa-84a8-bf5d6b2eebb5.'Hierarquia de datas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column hora
+		dataType: dateTime
+		formatString: Long Time
+		lineageTag: 3c0cb6de-56f9-40e7-b848-200d4a561216
+		summarizeBy: none
+		sourceColumn: hora
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Time
+
+	column mandante
+		dataType: string
+		lineageTag: e1910bde-dfc3-4c26-8c1d-1782f0aa93f5
+		summarizeBy: none
+		sourceColumn: mandante
+
+		annotation SummarizationSetBy = Automatic
+
+	column visitante
+		dataType: string
+		lineageTag: fed9079b-52e0-4afd-a806-b99b2aaf2207
+		summarizeBy: none
+		sourceColumn: visitante
+
+		annotation SummarizationSetBy = Automatic
+
+	column formacao_mandante
+		dataType: string
+		lineageTag: 15c32235-6ed4-4cd0-ad06-963e9634f5eb
+		summarizeBy: none
+		sourceColumn: formacao_mandante
+
+		annotation SummarizationSetBy = Automatic
+
+	column formacao_visitante
+		dataType: string
+		lineageTag: a675f670-0b73-483f-8fa1-72d5cf4e6b58
+		summarizeBy: none
+		sourceColumn: formacao_visitante
+
+		annotation SummarizationSetBy = Automatic
+
+	column tecnico_mandante
+		dataType: string
+		lineageTag: 3b61576a-6b52-4ccb-8609-2fc125577ca9
+		summarizeBy: none
+		sourceColumn: tecnico_mandante
+
+		annotation SummarizationSetBy = Automatic
+
+	column tecnico_visitante
+		dataType: string
+		lineageTag: b8dfaefc-5ed1-4b15-b3c3-c021527a9f56
+		summarizeBy: none
+		sourceColumn: tecnico_visitante
+
+		annotation SummarizationSetBy = Automatic
+
+	column vencedor
+		dataType: string
+		lineageTag: 3943a948-2329-4555-bfc0-735c1e458c01
+		summarizeBy: none
+		sourceColumn: vencedor
+
+		annotation SummarizationSetBy = Automatic
+
+	column arena
+		dataType: string
+		lineageTag: 1ac43ace-2e5e-48b9-99c8-a5f6193c306f
+		summarizeBy: none
+		sourceColumn: arena
+
+		annotation SummarizationSetBy = Automatic
+
+	column mandante_Placar
+		dataType: int64
+		formatString: 0
+		lineageTag: 66157dc3-ccb1-4d42-9d2b-554ac3d2089e
+		summarizeBy: sum
+		sourceColumn: mandante_Placar
+
+		annotation SummarizationSetBy = Automatic
+
+	column visitante_Placar
+		dataType: int64
+		formatString: 0
+		lineageTag: 369cefdd-5d23-4707-ad53-5586560c03ba
+		summarizeBy: sum
+		sourceColumn: visitante_Placar
+
+		annotation SummarizationSetBy = Automatic
+
+	column mandante_Estado
+		dataType: string
+		lineageTag: 55e4b833-156e-46b1-8236-70d2ac680290
+		summarizeBy: none
+		sourceColumn: mandante_Estado
+
+		annotation SummarizationSetBy = Automatic
+
+	column visitante_Estado
+		dataType: string
+		lineageTag: 3283020e-ca1e-4c5e-ac50-9fc5625f1aee
+		summarizeBy: none
+		sourceColumn: visitante_Estado
+
+		annotation SummarizationSetBy = Automatic
+
+	column arrecadacao
+		dataType: string
+		lineageTag: 4b577586-2ab8-41c0-a50c-ec7eff79b8d5
+		summarizeBy: none
+		sourceColumn: arrecadacao
+
+		annotation SummarizationSetBy = Automatic
+
+	partition campeonato-brasileiro-full = m
+		mode: import
+		source =
+				let
+				    Fonte = Csv.Document(File.Contents("C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_CampeonatoBrasileiro\Data\campeonato-brasileiro-full.csv"),[Delimiter=",", Columns=17, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"ID", Int64.Type}, {"rodata", Int64.Type}, {"data", type date}, {"hora", type time}, {"mandante", type text}, {"visitante", type text}, {"formacao_mandante", type text}, {"formacao_visitante", type text}, {"tecnico_mandante", type text}, {"tecnico_visitante", type text}, {"vencedor", type text}, {"arena", type text}, {"mandante_Placar", Int64.Type}, {"visitante_Placar", Int64.Type}, {"mandante_Estado", type text}, {"visitante_Estado", type text}, {"arrecadacao", type text}})
+				in
+				    #"Tipo Alterado"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

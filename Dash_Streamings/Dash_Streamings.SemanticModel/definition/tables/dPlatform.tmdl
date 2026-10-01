@@ -1,0 +1,21 @@
+table dPlatform
+	lineageTag: 0fd33db1-1acd-4c8b-ac1c-d2971805b56b
+
+	column Platform
+		dataType: string
+		lineageTag: 504c00db-19a0-4c64-a442-86fec273562c
+		summarizeBy: none
+		sourceColumn: Platform
+
+	partition dPlatform = m
+		mode: import
+		source =
+				let
+				    fonte = fStreamingCatalog,
+				    somenteColuna = Table.SelectColumns(fonte, {"platform"}),
+				    distintos = Table.Distinct(somenteColuna),
+				    naoVazios = Table.SelectRows(distintos, each [platform] <> null and [platform] <> ""),
+				    renomeado = Table.RenameColumns(naoVazios, {{"platform", "Platform"}})
+				in
+				    renomeado
+

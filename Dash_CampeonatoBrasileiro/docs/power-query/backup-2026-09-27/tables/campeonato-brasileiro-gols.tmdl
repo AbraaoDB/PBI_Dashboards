@@ -1,0 +1,67 @@
+table campeonato-brasileiro-gols
+	lineageTag: 70590f63-8ecf-45d7-bb43-4b950428b18d
+
+	column partida_id
+		dataType: int64
+		formatString: 0
+		lineageTag: d2c586de-7052-4706-bf56-ce3e0297b85d
+		summarizeBy: sum
+		sourceColumn: partida_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column rodata
+		dataType: int64
+		formatString: 0
+		lineageTag: 2a1d52da-734e-4e0e-bf4a-c3f28a3ccc64
+		summarizeBy: sum
+		sourceColumn: rodata
+
+		annotation SummarizationSetBy = Automatic
+
+	column clube
+		dataType: string
+		lineageTag: a3f1b9a7-d689-4aef-97ea-fb5572500af2
+		summarizeBy: none
+		sourceColumn: clube
+
+		annotation SummarizationSetBy = Automatic
+
+	column atleta
+		dataType: string
+		lineageTag: 69bdecdb-135b-44c0-ac8b-5c047db67dde
+		summarizeBy: none
+		sourceColumn: atleta
+
+		annotation SummarizationSetBy = Automatic
+
+	column minuto
+		dataType: string
+		lineageTag: e081233b-b934-4e8e-b1e7-6fe58c85d943
+		summarizeBy: none
+		sourceColumn: minuto
+
+		annotation SummarizationSetBy = Automatic
+
+	column tipo_de_gol
+		dataType: string
+		lineageTag: 3217677b-8582-4d76-ac76-10d4aab7656a
+		summarizeBy: none
+		sourceColumn: tipo_de_gol
+
+		annotation SummarizationSetBy = Automatic
+
+	partition campeonato-brasileiro-gols = m
+		mode: import
+		source =
+				let
+				    Fonte = Csv.Document(File.Contents("C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_CampeonatoBrasileiro\Data\campeonato-brasileiro-gols.csv"),[Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"partida_id", Int64.Type}, {"rodata", Int64.Type}, {"clube", type text}, {"atleta", type text}, {"minuto", type text}, {"tipo_de_gol", type text}})
+				in
+				    #"Tipo Alterado"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

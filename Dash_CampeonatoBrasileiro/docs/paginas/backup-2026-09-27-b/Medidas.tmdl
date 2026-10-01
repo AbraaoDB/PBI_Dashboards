@@ -1,0 +1,905 @@
+table Medidas
+
+	/// Número de jogos disputados: uma linha por clube em cada partida.
+	measure Jogos = ```
+			COUNTROWS ( fDesempenho )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Jogos com resultado Vitória.
+	measure 'Vitórias' = ```
+			CALCULATE ( COUNTROWS ( fDesempenho ), KEEPFILTERS ( fDesempenho[Resultado] = "Vitória" ) )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Jogos com resultado Empate.
+	measure Empates = ```
+			CALCULATE ( COUNTROWS ( fDesempenho ), KEEPFILTERS ( fDesempenho[Resultado] = "Empate" ) )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Jogos com resultado Derrota.
+	measure Derrotas = ```
+			CALCULATE ( COUNTROWS ( fDesempenho ), KEEPFILTERS ( fDesempenho[Resultado] = "Derrota" ) )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Soma de pontos: vitória 3, empate 1, derrota 0.
+	measure Pontos = ```
+			SUM ( fDesempenho[Pontos] )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Pontos conquistados sobre os pontos disputados (jogos × 3).
+	measure 'Aproveitamento %' = ```
+			DIVIDE ( [Pontos], [Jogos] * 3 )
+			```
+		formatString: 0.0%
+		displayFolder: 01. Campanha
+
+	/// Gols marcados pelo clube, pelo placar da partida.
+	measure 'Gols Pró' = ```
+			SUM ( fDesempenho[GolsPro] )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Gols sofridos pelo clube, pelo placar da partida.
+	measure 'Gols Contra' = ```
+			SUM ( fDesempenho[GolsContra] )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Gols pró menos gols contra.
+	measure 'Saldo de Gols' = ```
+			[Gols Pró] - [Gols Contra]
+			```
+		formatString: +#,0;-#,0;0
+		displayFolder: 01. Campanha
+
+	/// Média de gols marcados por jogo do clube.
+	measure 'Gols Pró por Jogo' = ```
+			DIVIDE ( [Gols Pró], [Jogos] )
+			```
+		formatString: 0.00
+		displayFolder: 01. Campanha
+
+	/// Média de gols sofridos por jogo do clube.
+	measure 'Gols Contra por Jogo' = ```
+			DIVIDE ( [Gols Contra], [Jogos] )
+			```
+		formatString: 0.00
+		displayFolder: 01. Campanha
+
+	/// Temporada do contexto quando há uma só; vazio quando há várias. Funciona com o slicer em dPartida ou em dCalendario.
+	measure 'Temporada Selecionada' = ```
+			VAR __temporadas = SUMMARIZE ( fDesempenho, dPartida[Temporada] )
+			RETURN
+			    IF ( COUNTROWS ( __temporadas ) = 1, MAXX ( __temporadas, dPartida[Temporada] ) )
+			```
+		formatString: 0
+		displayFolder: 99. Técnicas
+
+	/// Chave numérica de ordenação: Pontos, depois Vitórias, Saldo de gols e Gols pró (critério R2).
+	measure 'Índice Classificação' = ```
+			VAR __Pontos = [Pontos]
+			VAR __Vitorias = [Vitórias] + 0
+			VAR __Saldo = [Saldo de Gols] + 0
+			VAR __GolsPro = [Gols Pró] + 0
+			RETURN
+			    IF (
+			        NOT ISBLANK ( __Pontos ),
+			        ( ( __Pontos * 100 + __Vitorias ) * 1000 + ( __Saldo + 500 ) ) * 1000 + __GolsPro
+			    )
+			```
+		formatString: 0
+		isHidden
+		displayFolder: 99. Técnicas
+
+	/// Posição do clube na classificação da temporada (Pontos, Vitórias, Saldo, Gols pró). Exige uma única temporada no contexto.
+	measure 'Posição' = ```
+			VAR __clubes =
+			    CALCULATETABLE ( SUMMARIZE ( fDesempenho, dClube[Clube] ), REMOVEFILTERS ( dClube ) )
+			RETURN
+			    IF (
+			        HASONEVALUE ( dClube[Clube] )
+			            && NOT ISBLANK ( [Temporada Selecionada] )
+			            && NOT ISBLANK ( [Pontos] ),
+			        RANKX ( __clubes, [Índice Classificação], , DESC, SKIP )
+			    )
+			```
+		formatString: 0"º"
+		displayFolder: 02. Classificação
+
+	/// Pontos somados da 1ª rodada até a rodada do contexto, na temporada selecionada.
+	measure 'Pontos Acumulados' = ```
+			VAR __RodadaAtual = MAX ( dPartida[Rodada] )
+			RETURN
+			    IF (
+			        NOT ISBLANK ( [Temporada Selecionada] ),
+			        CALCULATE ( [Pontos], dPartida[Rodada] <= __RodadaAtual )
+			    )
+			```
+		formatString: #,0
+		displayFolder: 02. Classificação
+
+	/// Posição do clube na classificação acumulada até a rodada do contexto.
+	measure 'Posição na Rodada' = ```
+			VAR __RodadaAtual = MAX ( dPartida[Rodada] )
+			VAR __clubes =
+			    CALCULATETABLE (
+			        SUMMARIZE ( fDesempenho, dClube[Clube] ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( dPartida[Rodada] )
+			    )
+			RETURN
+			    IF (
+			        HASONEVALUE ( dClube[Clube] ) && NOT ISBLANK ( [Pontos Acumulados] ),
+			        RANKX (
+			            __clubes,
+			            CALCULATE ( [Índice Classificação], dPartida[Rodada] <= __RodadaAtual ),
+			            ,
+			            DESC,
+			            SKIP
+			        )
+			    )
+			```
+		formatString: 0"º"
+		displayFolder: 02. Classificação
+
+	/// Número de clubes participantes no contexto, independentemente do clube filtrado.
+	measure 'Clubes na Temporada' = ```
+			CALCULATE ( DISTINCTCOUNT ( fDesempenho[Clube] ), REMOVEFILTERS ( dClube ) )
+			```
+		formatString: #,0
+		displayFolder: 02. Classificação
+
+	/// Campeão (1º) ou Rebaixado (4 últimos, de 2006 em diante; 2003–2005 sem zona até confirmação).
+	measure Zona = ```
+			VAR __Posicao = [Posição]
+			VAR __Clubes = [Clubes na Temporada]
+			VAR __Temporada = [Temporada Selecionada]
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( __Posicao ), BLANK (),
+			        __Posicao = 1, "Campeão",
+			        __Temporada >= 2006 && __Posicao > __Clubes - 4, "Rebaixado"
+			    )
+			```
+		displayFolder: 02. Classificação
+
+	/// Clube em 1º lugar na temporada selecionada.
+	measure 'Campeão' = ```
+			VAR __clubes =
+			    CALCULATETABLE ( SUMMARIZE ( fDesempenho, dClube[Clube] ), REMOVEFILTERS ( dClube ) )
+			VAR __ranking = ADDCOLUMNS ( __clubes, "@Indice", [Índice Classificação] )
+			VAR __lider = TOPN ( 1, __ranking, [@Indice], DESC )
+			RETURN
+			    IF ( NOT ISBLANK ( [Temporada Selecionada] ), CONCATENATEX ( __lider, dClube[Clube], ", " ) )
+			```
+		displayFolder: 02. Classificação
+
+	/// Número de partidas distintas (cada jogo conta uma vez).
+	measure Partidas = ```
+			DISTINCTCOUNT ( fDesempenho[PartidaId] )
+			```
+		formatString: #,0
+		displayFolder: 03. Liga
+
+	/// Partidas da liga no período, ignorando clube, mando, adversário e resultado (regra R4).
+	measure 'Partidas (Liga)' = ```
+			CALCULATE (
+			    [Partidas],
+			    REMOVEFILTERS ( dClube ),
+			    REMOVEFILTERS ( fDesempenho[Mando], fDesempenho[Adversario], fDesempenho[Resultado] )
+			)
+			```
+		formatString: #,0
+		displayFolder: 03. Liga
+
+	/// Total de gols da liga dividido pelo número de partidas.
+	measure 'Gols por Jogo (Liga)' = ```
+			VAR __Gols =
+			    CALCULATE (
+			        [Gols Pró],
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Mando], fDesempenho[Adversario], fDesempenho[Resultado] )
+			    )
+			RETURN
+			    DIVIDE ( __Gols, [Partidas (Liga)] )
+			```
+		formatString: 0.00
+		displayFolder: 03. Liga
+
+	/// Partidas vencidas pelo mandante sobre o total de partidas da liga.
+	measure '% Vitórias do Mandante' = ```
+			VAR __VitoriasMandante =
+			    CALCULATE (
+			        COUNTROWS ( fDesempenho ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Adversario] ),
+			        fDesempenho[Mando] = "Casa",
+			        fDesempenho[Resultado] = "Vitória"
+			    )
+			RETURN
+			    DIVIDE ( __VitoriasMandante, [Partidas (Liga)] )
+			```
+		formatString: 0.0%
+		displayFolder: 03. Liga
+
+	/// Partidas vencidas pelo visitante sobre o total de partidas da liga.
+	measure '% Vitórias do Visitante' = ```
+			VAR __VitoriasVisitante =
+			    CALCULATE (
+			        COUNTROWS ( fDesempenho ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Adversario] ),
+			        fDesempenho[Mando] = "Fora",
+			        fDesempenho[Resultado] = "Vitória"
+			    )
+			RETURN
+			    DIVIDE ( __VitoriasVisitante, [Partidas (Liga)] )
+			```
+		formatString: 0.0%
+		displayFolder: 03. Liga
+
+	/// Partidas empatadas sobre o total de partidas da liga (conta a linha do mandante para não duplicar).
+	measure '% Empates' = ```
+			VAR __Empates =
+			    CALCULATE (
+			        COUNTROWS ( fDesempenho ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Adversario] ),
+			        fDesempenho[Mando] = "Casa",
+			        fDesempenho[Resultado] = "Empate"
+			    )
+			RETURN
+			    DIVIDE ( __Empates, [Partidas (Liga)] )
+			```
+		formatString: 0.0%
+		displayFolder: 03. Liga
+
+	/// Gols com lance registrado (autor e minuto); disponível a partir de 2014.
+	measure 'Gols Registrados' = ```
+			COUNTROWS ( fGols )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Gols para a artilharia: exclui gol contra (regra R5).
+	measure 'Gols do Atleta' = ```
+			CALCULATE ( COUNTROWS ( fGols ), KEEPFILTERS ( fGols[TipoGol] <> "Gol Contra" ) )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Gols marcados de pênalti.
+	measure 'Gols de Pênalti' = ```
+			CALCULATE ( COUNTROWS ( fGols ), KEEPFILTERS ( fGols[TipoGol] = "Penalty" ) )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Gols de pênalti sobre os gols registrados.
+	measure '% Gols de Pênalti' = ```
+			DIVIDE ( [Gols de Pênalti], [Gols Registrados] )
+			```
+		formatString: 0.0%
+		displayFolder: 04. Gols
+
+	/// Participação da faixa de minuto no total de gols registrados do contexto.
+	measure '% dos Gols na Faixa' = ```
+			DIVIDE (
+			    [Gols Registrados],
+			    CALCULATE ( [Gols Registrados], REMOVEFILTERS ( fGols[FaixaMinuto], fGols[FaixaMinutoOrdem] ) )
+			)
+			```
+		formatString: 0.0%
+		displayFolder: 04. Gols
+
+	/// Gols marcados pelos adversários nas partidas do clube filtrado; permite cortar por faixa de minuto. Exige clube no contexto.
+	measure 'Gols Sofridos (Lances)' = ```
+			VAR __clubes = VALUES ( dClube[Clube] )
+			VAR __partidas = VALUES ( fDesempenho[PartidaId] )
+			RETURN
+			    IF (
+			        ISFILTERED ( dClube[Clube] ),
+			        CALCULATE (
+			            COUNTROWS ( fGols ),
+			            REMOVEFILTERS ( dClube ),
+			            TREATAS ( __partidas, fGols[PartidaId] ),
+			            NOT ( fGols[Clube] IN __clubes )
+			        )
+			    )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Atleta com mais gols (sem gol contra) no contexto; empates listados juntos, com o total entre parênteses.
+	measure Artilheiro = ```
+			VAR __atletas =
+			    FILTER (
+			        ADDCOLUMNS ( VALUES ( fGols[Atleta] ), "@Gols", [Gols do Atleta] ),
+			        NOT ISBLANK ( fGols[Atleta] ) && NOT ISBLANK ( [@Gols] )
+			    )
+			VAR __lideres = TOPN ( 1, __atletas, [@Gols], DESC )
+			VAR __Gols = MAXX ( __lideres, [@Gols] )
+			RETURN
+			    IF (
+			        NOT ISEMPTY ( __lideres ),
+			        CONCATENATEX ( __lideres, fGols[Atleta], ", ", fGols[Atleta], ASC ) & " (" & __Gols & ")"
+			    )
+			```
+		displayFolder: 04. Gols
+
+	/// Total de cartões (amarelos e vermelhos); disponível de 2014 a 2024.
+	measure 'Cartões' = ```
+			COUNTROWS ( fCartoes )
+			```
+		formatString: #,0
+		displayFolder: 05. Disciplina
+
+	/// Cartões amarelos.
+	measure 'Cartões Amarelos' = ```
+			CALCULATE ( COUNTROWS ( fCartoes ), KEEPFILTERS ( fCartoes[Cartao] = "Amarelo" ) )
+			```
+		formatString: #,0
+		displayFolder: 05. Disciplina
+
+	/// Cartões vermelhos.
+	measure 'Cartões Vermelhos' = ```
+			CALCULATE ( COUNTROWS ( fCartoes ), KEEPFILTERS ( fCartoes[Cartao] = "Vermelho" ) )
+			```
+		formatString: #,0
+		displayFolder: 05. Disciplina
+
+	/// Cartões do clube por jogo, contando só temporadas com cartões registrados e respeitando filtros de mando e resultado.
+	measure 'Cartões por Jogo' = ```
+			VAR __partidas = VALUES ( fDesempenho[PartidaId] )
+			VAR __Cartoes = CALCULATE ( [Cartões], TREATAS ( __partidas, fCartoes[PartidaId] ) )
+			VAR __temporadasComCartoes =
+			    CALCULATETABLE ( SUMMARIZE ( fCartoes, dPartida[Temporada] ), REMOVEFILTERS ( dClube ) )
+			VAR __Jogos = CALCULATE ( [Jogos], KEEPFILTERS ( __temporadasComCartoes ) )
+			RETURN
+			    DIVIDE ( __Cartoes, __Jogos )
+			```
+		formatString: 0.00
+		displayFolder: 05. Disciplina
+
+	/// Finalizações (vazio nas temporadas sem coleta).
+	measure Chutes = ```
+			SUM ( fDesempenho[Chutes] )
+			```
+		formatString: #,0
+		displayFolder: 06. Estilo de Jogo
+
+	/// Finalizações no alvo.
+	measure 'Chutes no Alvo' = ```
+			SUM ( fDesempenho[ChutesNoAlvo] )
+			```
+		formatString: #,0
+		displayFolder: 06. Estilo de Jogo
+
+	/// Chutes no alvo sobre o total de chutes.
+	measure '% Chutes no Alvo' = ```
+			DIVIDE ( [Chutes no Alvo], [Chutes] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Gols pró sobre chutes, só nos jogos com estatística coletada.
+	measure 'Conversão de Chutes' = ```
+			VAR __GolsComEstatistica =
+			    CALCULATE ( [Gols Pró], KEEPFILTERS ( fDesempenho[TemEstatistica] = TRUE () ) )
+			RETURN
+			    DIVIDE ( __GolsComEstatistica, [Chutes] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Média da posse de bola por jogo (ignora jogos sem coleta).
+	measure 'Posse Média' = ```
+			AVERAGE ( fDesempenho[PossePct] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Média da precisão de passe por jogo (ignora jogos sem coleta).
+	measure 'Precisão de Passe Média' = ```
+			AVERAGE ( fDesempenho[PrecisaoPassesPct] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Mensagem para a temporada selecionada quando algum tema não tem dados (regra R7).
+	measure 'Aviso de Cobertura' = ```
+			VAR __Temporada = [Temporada Selecionada]
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( __Temporada ), BLANK (),
+			        __Temporada < 2014, "Gols, cartões e estatísticas detalhados só a partir de 2014.",
+			        __Temporada = 2014, "Estatísticas de jogo (posse, chutes, passes) indisponíveis para 2014.",
+			        __Temporada = 2024, "Estatísticas de jogo (posse, chutes, passes) indisponíveis para 2024.",
+			        __Temporada = 2025, "Cartões indisponíveis para 2025."
+			    )
+			```
+		displayFolder: 99. Técnicas
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Primária' = "#22D3EE"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Primária Escura' = "#0B3A48"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Positiva' = "#34D399"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Alerta' = "#FBBF24"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Alerta Preenchimento' = "#F59E0B"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Negativa' = "#F87171"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Texto' = "#E6EDF7"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Texto Suave' = "#8FA3BF"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Texto Sobre Destaque' = "#04111D"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Neutra' = "#64748B"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Trilho' = "#1C2940"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Destaque Suave' = "#60A5FA"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Fundo Página' = "#060B16"
+		displayFolder: 91. Cores
+
+	/// Token de cor do tema escuro do relatório.
+	measure 'Cor Fundo Card' = "#0D1628"
+		displayFolder: 91. Cores
+
+	/// Página Temporada (capa): campeão, KPIs, classificação, corrida pelo título, gols por minuto e mando. Visual HTML Content (lite). Texto puro, sem dataCategory.
+	measure 'Temporada Página HTML' = ```
+			VAR __prim = [Cor Primária]
+			VAR __primDark = [Cor Primária Escura]
+			VAR __pos = [Cor Positiva]
+			VAR __alert = [Cor Alerta]
+			VAR __alertFill = [Cor Alerta Preenchimento]
+			VAR __neg = [Cor Negativa]
+			VAR __txt = [Cor Texto]
+			VAR __txtSoft = [Cor Texto Suave]
+			VAR __onAccent = [Cor Texto Sobre Destaque]
+			VAR __neutral = [Cor Neutra]
+			VAR __track = [Cor Trilho]
+			VAR __blue = [Cor Destaque Suave]
+			VAR __bgPage = [Cor Fundo Página]
+			VAR __card = [Cor Fundo Card]
+			VAR __Temporada = [Temporada Selecionada]
+			-- CSS
+			VAR __Css = "<style>" &
+			        "html,body{margin:0;padding:0;height:100%;overflow:hidden;background:" & __bgPage & "}" &
+			        "*{box-sizing:border-box}" &
+			        ".dv{height:100vh;padding:24px 28px;display:grid;grid-template-rows:72px minmax(0,1fr);gap:18px;font-family:'Segoe UI',system-ui,sans-serif;color:" & __txt & ";font-variant-numeric:tabular-nums;background:radial-gradient(1100px 560px at 8% -12%," & __prim & "1F,transparent 60%),radial-gradient(900px 520px at 100% -5%," & __blue & "17,transparent 62%)," & __bgPage & "}" &
+			        ".dv-head{display:flex;align-items:center;justify-content:space-between}" &
+			        ".dv-brand{display:flex;gap:16px;align-items:center}" &
+			        ".dv-logo{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg," & __prim & "," & __blue & ");box-shadow:0 0 28px " & __prim & "59}" &
+			        ".dv-kicker{font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:" & __txtSoft & "}" &
+			        ".dv-title{font-size:30px;font-weight:700;letter-spacing:-.6px;line-height:1.1}" &
+			        ".dv-title b{color:" & __prim & "}" &
+			        ".dv-meta{font-size:13px;color:" & __txtSoft & ";margin-top:2px}" &
+			        ".dv-headR{display:flex;gap:14px;align-items:center}" &
+			        ".dv-chip{font-size:12px;padding:7px 14px;border-radius:999px;border:1px solid " & __alert & "66;color:" & __alert & ";background:" & __alert & "14}" &
+			        ".dv-slot{width:250px;height:52px;border-radius:14px;border:1px solid " & __track & ";background:" & __card & ";display:flex;align-items:center;padding:0 16px;font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:" & __txtSoft & "}" &
+			        ".dv-main{display:grid;grid-template-columns:600px minmax(0,1fr) minmax(0,1fr);grid-template-rows:230px minmax(0,1fr) 300px;gap:16px;min-height:0}" &
+			        ".dv-card{position:relative;overflow:hidden;min-height:0;border-radius:18px;padding:18px 20px;border:1px solid " & __track & ";background:linear-gradient(180deg," & __card & "," & __card & "D9);box-shadow:inset 0 1px 0 " & __txt & "0F,0 12px 32px " & __bgPage & "99;animation:fade .6s ease both}" &
+			        ".dv-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}" &
+			        ".dv-h h3{margin:0;font-size:15px;font-weight:600}" &
+			        ".dv-h span{font-size:12px;color:" & __txtSoft & "}" &
+			        ".dv-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:" & __prim & ";font-weight:600}" &
+			        ".dv-champ{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:12px;border-color:" & __prim & "59;background:radial-gradient(420px 240px at 88% 18%," & __prim & "33,transparent 70%),linear-gradient(135deg," & __card & "," & __primDark & ")}" &
+			        ".dv-champName{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1.05;margin:8px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" &
+			        ".dv-champSub{font-size:13px;color:" & __txtSoft & "}" &
+			        ".dv-champSub b{color:" & __pos & ";font-weight:600}" &
+			        ".dv-stats{display:flex;gap:22px;margin-top:22px}" &
+			        ".dv-stat b{display:block;font-size:22px;font-weight:700}" &
+			        ".dv-stat span{font-size:11px;color:" & __txtSoft & ";text-transform:uppercase;letter-spacing:1px}" &
+			        ".dv-ring{width:140px;height:140px;border-radius:50%;align-self:center;display:grid;place-items:center;background:conic-gradient(" & __prim & " calc(var(--p)*1%)," & __track & " 0);box-shadow:0 0 40px " & __prim & "33}" &
+			        ".dv-ringIn{width:112px;height:112px;border-radius:50%;background:" & __card & ";display:grid;place-content:center;text-align:center}" &
+			        ".dv-ringIn b{font-size:28px;font-weight:700}" &
+			        ".dv-ringIn span{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:" & __txtSoft & "}" &
+			        ".dv-tiles{grid-column:2/4;display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:16px;min-height:0}" &
+			        ".dv-big{font-size:46px;font-weight:700;letter-spacing:-1px;line-height:1;margin-top:10px}" &
+			        ".dv-big small{font-size:14px;font-weight:500;color:" & __txtSoft & ";margin-left:6px;letter-spacing:0}" &
+			        ".dv-note{font-size:12px;color:" & __txtSoft & ";margin-top:8px}" &
+			        ".dv-note b{font-weight:600}" &
+			        ".dv-up{color:" & __pos & "} .dv-down{color:" & __neg & "}" &
+			        ".dv-spark{position:absolute;left:20px;right:20px;bottom:16px;height:56px}" &
+			        ".dv-spark svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}" &
+			        ".dv-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:" & __prim & ";box-shadow:0 0 0 4px " & __prim & "40,0 0 16px " & __prim & ";transform:translate(-50%,-50%)}" &
+			        ".dv-scorer{font-size:26px;font-weight:700;margin-top:12px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" &
+			        ".dv-goals{font-size:40px;font-weight:800;color:" & __prim & ";margin-top:8px;line-height:1}" &
+			        ".dv-goals small{font-size:14px;color:" & __txtSoft & ";font-weight:500;margin-left:6px}" &
+			        ".dv-rel{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}" &
+			        ".dv-rel span{font-size:13px;font-weight:600;padding:7px 12px;border-radius:10px;color:" & __neg & ";background:" & __neg & "1A;border:1px solid " & __neg & "40}" &
+			        ".dv-rel em{font-style:normal;font-size:11px;color:" & __txtSoft & ";margin-left:6px}" &
+			        ".dv-table{grid-row:2/4;display:flex;flex-direction:column}" &
+			        ".dv-thead,.dv-row{display:grid;grid-template-columns:30px minmax(0,1fr) 40px 32px 30px 30px 30px 44px 118px;align-items:center;gap:6px}" &
+			        ".dv-thead{font-size:10.5px;color:" & __txtSoft & ";text-transform:uppercase;letter-spacing:1px;padding:0 10px 8px;border-bottom:1px solid " & __track & "}" &
+			        ".dv-thead span,.dv-row .dv-n{text-align:right}" &
+			        ".dv-rows{flex:1;display:grid;grid-template-rows:repeat(var(--n),minmax(0,1fr));min-height:0;margin-top:6px}" &
+			        ".dv-row{font-size:13px;padding:0 10px;border-radius:8px;border-left:3px solid transparent;transition:background .2s}" &
+			        ".dv-row:nth-child(odd){background:" & __txt & "06}" &
+			        ".dv-row:hover{background:" & __prim & "1A}" &
+			        ".dv-pos{width:24px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;font-weight:700;background:" & __track & "}" &
+			        ".dv-row.zc{border-left-color:" & __prim & "}" &
+			        ".dv-row.zc .dv-pos{background:" & __prim & ";color:" & __onAccent & "}" &
+			        ".dv-row.zr{border-left-color:" & __neg & "}" &
+			        ".dv-row.zr .dv-pos{background:" & __neg & "33;color:" & __neg & "}" &
+			        ".dv-club{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" &
+			        ".dv-n{color:" & __txtSoft & "}" &
+			        ".dv-row .dv-pts{text-align:right;font-weight:700;color:" & __txt & "}" &
+			        ".dv-ap{display:flex;align-items:center;gap:8px}" &
+			        ".dv-ap i{flex:1;height:6px;border-radius:3px;background:" & __track & ";position:relative;overflow:hidden}" &
+			        ".dv-ap i b{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:linear-gradient(90deg," & __blue & "," & __prim & ");transform-origin:left;animation:grow .9s ease both}" &
+			        ".dv-ap em{font-style:normal;font-size:11px;color:" & __txtSoft & ";width:32px;text-align:right}" &
+			        ".dv-foot{display:flex;gap:16px;font-size:11px;color:" & __txtSoft & ";padding:8px 10px 0;border-top:1px solid " & __track & "}" &
+			        ".dv-foot i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}" &
+			        ".dv-race{grid-column:2/4;display:flex;flex-direction:column}" &
+			        ".dv-leg{display:flex;gap:16px;font-size:12px;color:" & __txtSoft & "}" &
+			        ".dv-leg b{color:" & __txt & ";font-weight:600;margin-left:4px}" &
+			        ".dv-leg i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}" &
+			        ".dv-plot{position:relative;flex:1;margin:6px 8px 22px 34px;min-height:0}" &
+			        ".dv-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;animation:reveal 1.2s ease both}" &
+			        ".dv-gl{position:absolute;left:0;right:0;border-top:1px dashed " & __track & "}" &
+			        ".dv-gl span{position:absolute;left:-34px;top:-8px;font-size:11px;color:" & __txtSoft & ";width:26px;text-align:right}" &
+			        ".dv-turn{position:absolute;top:-4px;bottom:0;border-left:1px dashed " & __txtSoft & "73}" &
+			        ".dv-turn span{position:absolute;top:-2px;left:8px;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:" & __txtSoft & ";white-space:nowrap}" &
+			        ".dv-xt{position:absolute;bottom:-20px;font-size:11px;color:" & __txtSoft & ";transform:translateX(-50%)}" &
+			        ".dv-end{position:absolute;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px currentColor;background:currentColor}" &
+			        ".dv-bars{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;height:calc(100% - 62px)}" &
+			        ".dv-bar{display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;text-align:center;min-height:0}" &
+			        ".dv-bar b{font-size:12px;font-weight:600;margin-bottom:5px}" &
+			        ".dv-bar i{display:block;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg," & __prim & "," & __prim & "26);transform-origin:bottom;animation:rise .8s ease both}" &
+			        ".dv-bar.ac i{background:linear-gradient(180deg," & __alertFill & "," & __alertFill & "26)}" &
+			        ".dv-bar.ac b{color:" & __alert & "}" &
+			        ".dv-bar span{font-size:11px;color:" & __txtSoft & ";margin-top:7px}" &
+			        ".dv-bar:hover i{filter:brightness(1.25)}" &
+			        ".dv-empty{height:calc(100% - 40px);display:grid;place-items:center;text-align:center;font-size:13px;color:" & __txtSoft & ";border:1px dashed " & __track & ";border-radius:12px}" &
+			        ".dv-stack{display:flex;height:38px;gap:3px;border-radius:10px;overflow:hidden;margin-top:4px}" &
+			        ".dv-stack div{display:grid;place-items:center;font-size:13px;font-weight:700;transform-origin:left;animation:grow .9s ease both}" &
+			        ".dv-sM{background:" & __prim & ";color:" & __onAccent & "}" &
+			        ".dv-sE{background:" & __neutral & ";color:" & __txt & "}" &
+			        ".dv-sV{background:" & __blue & ";color:" & __onAccent & "}" &
+			        ".dv-sleg{display:flex;justify-content:space-between;font-size:11px;color:" & __txtSoft & ";margin-top:8px}" &
+			        ".dv-sleg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}" &
+			        ".dv-hist{position:relative;height:92px;margin-top:18px}" &
+			        ".dv-hist svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}" &
+			        ".dv-hcap{display:flex;justify-content:space-between;font-size:11px;color:" & __txtSoft & ";margin-top:8px}" &
+			        ".dv-msg{height:100%;display:grid;place-items:center;text-align:center;color:" & __txtSoft & ";font-size:15px}" &
+			        "@keyframes fade{from{opacity:0;transform:translateY(6px)}}" &
+			        "@keyframes rise{from{transform:scaleY(0)}}" &
+			        "@keyframes grow{from{transform:scaleX(0)}}" &
+			        "@keyframes reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}" &
+			        "@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}" &
+			        ".dv-acK{display:inline-block;width:8px;height:8px;border-radius:2px;background:" & __alertFill & ";margin-right:5px}" &
+			        ".dv-rel+.dv-note{margin-top:14px}" &
+			        "</style>"
+			-- DADOS: classificação
+			VAR __clubes =
+			    CALCULATETABLE ( SUMMARIZE ( fDesempenho, dClube[Clube] ), REMOVEFILTERS ( dClube ) )
+			VAR __tabela =
+			    ADDCOLUMNS (
+			        __clubes,
+			        "@Pos", [Posição],
+			        "@P", [Pontos],
+			        "@J", [Jogos],
+			        "@V", [Vitórias] + 0,
+			        "@E", [Empates] + 0,
+			        "@D", [Derrotas] + 0,
+			        "@SG", [Saldo de Gols] + 0,
+			        "@Ap", [Aproveitamento %],
+			        "@Zona", [Zona]
+			    )
+			VAR __NClubes = COUNTROWS ( __tabela )
+			VAR __Partidas = [Partidas (Liga)]
+			VAR __rodadas = SUMMARIZE ( fDesempenho, dPartida[Rodada] )
+			VAR __NRod = MAXX ( __rodadas, dPartida[Rodada] )
+			VAR __Metade = INT ( __NRod / 2 )
+			VAR __lider = TOPN ( 1, __tabela, [@Pos], ASC )
+			VAR __CampeaoNome = MAXX ( __lider, dClube[Clube] )
+			VAR __CampeaoP = MAXX ( __lider, [@P] )
+			VAR __CampeaoV = MAXX ( __lider, [@V] )
+			VAR __CampeaoE = MAXX ( __lider, [@E] )
+			VAR __CampeaoD = MAXX ( __lider, [@D] )
+			VAR __CampeaoSG = MAXX ( __lider, [@SG] )
+			VAR __CampeaoAp = MAXX ( __lider, [@Ap] )
+			VAR __vice = FILTER ( __tabela, [@Pos] = 2 )
+			VAR __ViceNome = MAXX ( __vice, dClube[Clube] )
+			VAR __ViceP = MAXX ( __vice, [@P] )
+			VAR __rebaixados = FILTER ( __tabela, [@Zona] = "Rebaixado" )
+			VAR __NReb = COUNTROWS ( __rebaixados )
+			VAR __corte = FILTER ( __tabela, [@Pos] = __NClubes - 4 )
+			VAR __CorteNome = MAXX ( __corte, dClube[Clube] )
+			VAR __CorteP = MAXX ( __corte, [@P] )
+			-- DADOS: séries históricas (ignoram o filtro de temporada)
+			VAR __historico =
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( dPartida[Temporada] ), REMOVEFILTERS ( dPartida ), REMOVEFILTERS ( dCalendario ) ),
+			        "@GJ", CALCULATE ( [Gols por Jogo (Liga)], REMOVEFILTERS ( dCalendario ) ),
+			        "@M", CALCULATE ( [% Vitórias do Mandante], REMOVEFILTERS ( dCalendario ) )
+			    )
+			VAR __TMin = MINX ( __historico, dPartida[Temporada] )
+			VAR __TMax = MAXX ( __historico, dPartida[Temporada] )
+			VAR __DotX = FORMAT ( DIVIDE ( __Temporada - __TMin, __TMax - __TMin ) * 100, "0.0", "en-US" )
+			VAR __GJ = [Gols por Jogo (Liga)]
+			VAR __GJHist = CALCULATE ( [Gols por Jogo (Liga)], REMOVEFILTERS ( dPartida ), REMOVEFILTERS ( dCalendario ) )
+			VAR __GJDif = __GJ - __GJHist
+			VAR __GJMin = MINX ( __historico, [@GJ] )
+			VAR __GJMax = MAXX ( __historico, [@GJ] )
+			VAR __GJLo = __GJMin - ( __GJMax - __GJMin ) * 0.15
+			VAR __GJHi = __GJMax + ( __GJMax - __GJMin ) * 0.15
+			VAR __GJPts =
+			    CONCATENATEX (
+			        __historico,
+			        FORMAT ( DIVIDE ( dPartida[Temporada] - __TMin, __TMax - __TMin ) * 1000, "0.0", "en-US" ) & "," &
+			            FORMAT ( 100 - DIVIDE ( [@GJ] - __GJLo, __GJHi - __GJLo ) * 100, "0.0", "en-US" ),
+			        " ",
+			        dPartida[Temporada], ASC
+			    )
+			VAR __GJDotY = FORMAT ( 100 - DIVIDE ( __GJ - __GJLo, __GJHi - __GJLo ) * 100, "0.0", "en-US" )
+			VAR __PM = [% Vitórias do Mandante]
+			VAR __PE = [% Empates]
+			VAR __PV = [% Vitórias do Visitante]
+			VAR __MHist = CALCULATE ( [% Vitórias do Mandante], REMOVEFILTERS ( dPartida ), REMOVEFILTERS ( dCalendario ) )
+			VAR __MMin = MINX ( __historico, [@M] )
+			VAR __MMax = MAXX ( __historico, [@M] )
+			VAR __MLo = __MMin - ( __MMax - __MMin ) * 0.15
+			VAR __MHi = __MMax + ( __MMax - __MMin ) * 0.15
+			VAR __MPts =
+			    CONCATENATEX (
+			        __historico,
+			        FORMAT ( DIVIDE ( dPartida[Temporada] - __TMin, __TMax - __TMin ) * 1000, "0.0", "en-US" ) & "," &
+			            FORMAT ( 100 - DIVIDE ( [@M] - __MLo, __MHi - __MLo ) * 100, "0.0", "en-US" ),
+			        " ",
+			        dPartida[Temporada], ASC
+			    )
+			VAR __MDotY = FORMAT ( 100 - DIVIDE ( __PM - __MLo, __MHi - __MLo ) * 100, "0.0", "en-US" )
+			-- DADOS: artilharia e gols por minuto
+			VAR __Art = [Artilheiro]
+			VAR __ArtPos = SEARCH ( " (", __Art, 1, 0 )
+			VAR __ArtNome = IF ( __ArtPos > 0, LEFT ( __Art, __ArtPos - 1 ) )
+			VAR __ArtGols = IF ( __ArtPos > 0, MID ( __Art, __ArtPos + 2, LEN ( __Art ) - __ArtPos - 2 ) )
+			VAR __TotalGols = [Gols Registrados]
+			VAR __faixas =
+			    ADDCOLUMNS ( ALL ( fGols[FaixaMinutoOrdem], fGols[FaixaMinuto] ), "@G", [Gols Registrados] + 0 )
+			VAR __MaxG = MAXX ( __faixas, [@G] )
+			VAR __Tardios = SUMX ( FILTER ( __faixas, fGols[FaixaMinutoOrdem] >= 7 ), [@G] )
+			-- DADOS: corrida pelo título (4 primeiros)
+			VAR __top4 = TOPN ( 4, __tabela, [@Pos], ASC )
+			VAR __YMax = ( INT ( MAXX ( __top4, [@P] ) / 20 ) + 1 ) * 20
+			-- ELEMENTOS
+			VAR __Head =
+			    "<header class='dv-head'><div class='dv-brand'><div class='dv-logo'>" &
+			    "<svg width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='" & __onAccent & "' stroke-width='1.8'><circle cx='12' cy='12' r='9'/><path d='M12 7l4 3-1.5 4.5h-5L8 10z'/><path d='M12 3v4M21 10l-5 0M3 10h5M15 21l-.5-6.5M9 21l.5-6.5'/></svg></div>" &
+			    "<div><div class='dv-kicker'>Campeonato Brasileiro · Série A</div>" &
+			    "<div class='dv-title'>Temporada <b>" & __Temporada & "</b></div>" &
+			    "<div class='dv-meta'>" & FORMAT ( __Partidas, "#,0", "pt-BR" ) & " jogos · " & __NClubes & " clubes · " & __NRod & " rodadas</div></div></div>" &
+			    "<div class='dv-headR'>" &
+			    IF ( NOT ISBLANK ( [Aviso de Cobertura] ), "<div class='dv-chip'>" & [Aviso de Cobertura] & "</div>" ) &
+			    "<div class='dv-slot'></div></div></header>"
+			VAR __Diferenca = __CampeaoP - __ViceP
+			VAR __Champ =
+			    "<section class='dv-card dv-champ'><div><div class='dv-label'>Campeão</div>" &
+			    "<div class='dv-champName'>" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __CampeaoNome, "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" ) & "</div>" &
+			    "<div class='dv-champSub'>" &
+			    IF (
+			        __Diferenca > 0,
+			        "<b>+" & __Diferenca & " pts</b> à frente de ",
+			        "<b>Empate em pontos</b>, venceu no desempate contra "
+			    ) &
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __ViceNome, "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" ) & " (" & __ViceP & ")</div>" &
+			    "<div class='dv-stats'><div class='dv-stat'><b>" & __CampeaoP & "</b><span>Pontos</span></div>" &
+			    "<div class='dv-stat'><b>" & __CampeaoV & "-" & __CampeaoE & "-" & __CampeaoD & "</b><span>V-E-D</span></div>" &
+			    "<div class='dv-stat'><b>" & FORMAT ( __CampeaoSG, "+0;-0;0" ) & "</b><span>Saldo</span></div></div></div>" &
+			    "<div class='dv-ring' style='--p:" & INT ( ROUND ( __CampeaoAp * 100, 0 ) ) & "'><div class='dv-ringIn'><b>" &
+			    FORMAT ( __CampeaoAp, "0.0%", "pt-BR" ) & "</b><span>Aproveit.</span></div></div></section>"
+			VAR __TileGJ =
+			    "<section class='dv-card'><div class='dv-h'><h3>Gols por jogo</h3><span>Série " & __TMin & "–" & __TMax & "</span></div>" &
+			    "<div class='dv-big'>" & FORMAT ( __GJ, "0.00", "pt-BR" ) & "<small>gols/jogo</small></div>" &
+			    "<div class='dv-note'><b class='" & IF ( __GJDif >= 0, "dv-up'>▲ ", "dv-down'>▼ " ) & FORMAT ( ABS ( __GJDif ), "0.00", "pt-BR" ) & "</b> vs. média histórica de " & FORMAT ( __GJHist, "0.00", "pt-BR" ) & "</div>" &
+			    "<div class='dv-spark'><svg viewBox='0 0 1000 100' preserveAspectRatio='none'><defs><linearGradient id='sg1' x1='0' y1='0' x2='0' y2='1'>" &
+			    "<stop offset='0' stop-color='" & __prim & "' stop-opacity='.35'/><stop offset='1' stop-color='" & __prim & "' stop-opacity='0'/></linearGradient></defs>" &
+			    "<polygon points='0,100 " & __GJPts & " 1000,100' fill='url(#sg1)'/>" &
+			    "<polyline points='" & __GJPts & "' fill='none' stroke='" & __prim & "' stroke-width='2' vector-effect='non-scaling-stroke' stroke-linejoin='round'/></svg>" &
+			    "<div class='dv-dot' style='left:" & __DotX & "%;top:" & __GJDotY & "%'></div></div></section>"
+			VAR __TileArt =
+			    "<section class='dv-card'><div class='dv-h'><h3>Artilheiro</h3>" &
+			    IF (
+			        __ArtPos > 0,
+			        "<span>sem gols contra</span></div>" &
+			        "<div class='dv-scorer'>" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __ArtNome, "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" ) & "</div>" &
+			        "<div class='dv-goals'>" & __ArtGols & "<small>gols</small></div>" &
+			        "<div class='dv-note'>Pênaltis: <b>" & FORMAT ( [% Gols de Pênalti], "0.0%", "pt-BR" ) & "</b> dos gols da temporada</div>",
+			        "</div><div class='dv-empty'>Autores dos gols registrados só a partir de 2014</div>"
+			    ) & "</section>"
+			VAR __TileReb =
+			    "<section class='dv-card'><div class='dv-h'><h3>Rebaixados</h3><span>" &
+			    IF ( __NReb > 0, __NReb & " últimos colocados" ) & "</span></div>" &
+			    IF (
+			        __NReb > 0,
+			        "<div class='dv-rel'>" &
+			        CONCATENATEX (
+			            __rebaixados,
+			            "<span>" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( dClube[Clube], "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" ) & "<em>" & [@P] & " pts</em></span>",
+			            "",
+			            [@Pos], ASC
+			        ) & "</div>" &
+			        "<div class='dv-note'>Escapou por último: <b>" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __CorteNome, "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" ) & "</b> (" & ( __NClubes - 4 ) & "º), " & __CorteP & " pts</div>",
+			        "<div class='dv-empty'>Zona de rebaixamento de 2003–2005 pendente de confirmação</div>"
+			    ) & "</section>"
+			VAR __Linhas =
+			    CONCATENATEX (
+			        __tabela,
+			        VAR __z = SWITCH ( [@Zona], "Campeão", " zc", "Rebaixado", " zr", "" )
+			        VAR __ap = INT ( ROUND ( [@Ap] * 100, 0 ) )
+			        RETURN
+			            "<div class='dv-row" & __z & "'><span class='dv-pos'>" & [@Pos] & "</span>" &
+			            "<span class='dv-club'>" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( dClube[Clube], "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" ) & "</span>" &
+			            "<span class='dv-pts'>" & [@P] & "</span><span class='dv-n'>" & [@J] & "</span>" &
+			            "<span class='dv-n'>" & [@V] & "</span><span class='dv-n'>" & [@E] & "</span><span class='dv-n'>" & [@D] & "</span>" &
+			            "<span class='dv-n'>" & FORMAT ( [@SG], "+0;-0;0" ) & "</span>" &
+			            "<span class='dv-ap'><i><b style='width:" & __ap & "%'></b></i><em>" & __ap & "%</em></span></div>",
+			        "",
+			        [@Pos], ASC
+			    )
+			VAR __BlocoTabela =
+			    "<section class='dv-card dv-table'><div class='dv-h'><h3>Classificação</h3><span>Pontos › Vitórias › Saldo › Gols pró</span></div>" &
+			    "<div class='dv-thead'><span>#</span><span style='text-align:left'>Clube</span><span>P</span><span>J</span><span>V</span><span>E</span><span>D</span><span>SG</span><span style='text-align:left;padding-left:4px'>Aproveitamento</span></div>" &
+			    "<div class='dv-rows' style='--n:" & __NClubes & "'>" & __Linhas & "</div>" &
+			    "<div class='dv-foot'><span><i style='background:" & __prim & "'></i>Campeão</span>" &
+			    IF ( __NReb > 0, "<span><i style='background:" & __neg & "'></i>Rebaixamento</span>" ) & "</div></section>"
+			VAR __Polilinhas =
+			    CONCATENATEX (
+			        __top4,
+			        VAR __cor = SWITCH ( [@Pos], 1, __prim, 2, __blue, 3, __alertFill, __txtSoft )
+			        VAR __pts =
+			            CONCATENATEX (
+			                __rodadas,
+			                FORMAT ( DIVIDE ( dPartida[Rodada] - 1, __NRod - 1 ) * 1000, "0.0", "en-US" ) & "," &
+			                    FORMAT ( 300 - DIVIDE ( CALCULATE ( [Pontos Acumulados] ), __YMax ) * 300, "0.0", "en-US" ),
+			                " ",
+			                dPartida[Rodada], ASC
+			            )
+			        RETURN
+			            IF ( [@Pos] = 1, "<polygon points='0,300 " & __pts & " 1000,300' fill='url(#rg)'/>" ) &
+			            "<polyline points='" & __pts & "' fill='none' stroke='" & __cor & "' stroke-width='" & IF ( [@Pos] = 1, 3, 2 ) &
+			            "' vector-effect='non-scaling-stroke' stroke-linejoin='round'/>",
+			        "",
+			        [@Pos], DESC
+			    )
+			VAR __Fins =
+			    CONCATENATEX (
+			        __top4,
+			        "<div class='dv-end' style='left:100%;top:" & FORMAT ( 100 - DIVIDE ( [@P], __YMax ) * 100, "0.0", "en-US" ) &
+			            "%;color:" & SWITCH ( [@Pos], 1, __prim, 2, __blue, 3, __alertFill, __txtSoft ) & "'></div>",
+			        "",
+			        [@Pos], DESC
+			    )
+			VAR __Legenda =
+			    CONCATENATEX (
+			        __top4,
+			        "<span><i style='background:" & SWITCH ( [@Pos], 1, __prim, 2, __blue, 3, __alertFill, __txtSoft ) & "'></i>" &
+			            SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( dClube[Clube], "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" ) & "<b>" & [@P] & "</b></span>",
+			        "",
+			        [@Pos], ASC
+			    )
+			VAR __Grade =
+			    CONCATENATEX (
+			        GENERATESERIES ( 0, 4, 1 ),
+			        "<div class='dv-gl' style='top:" & ( 100 - [Value] * 25 ) & "%'><span>" & INT ( __YMax * [Value] / 4 ) & "</span></div>",
+			        "",
+			        [Value], ASC
+			    )
+			VAR __XTicks =
+			    CONCATENATEX (
+			        DISTINCT ( { 1, INT ( __Metade / 2 ) + 1, __Metade, __Metade + INT ( __Metade / 2 ), __NRod } ),
+			        "<div class='dv-xt' style='left:" & FORMAT ( DIVIDE ( [Value] - 1, __NRod - 1 ) * 100, "0.0", "en-US" ) & "%'>" & [Value] & "</div>",
+			        "",
+			        [Value], ASC
+			    )
+			VAR __Corrida =
+			    "<section class='dv-card dv-race'><div class='dv-h'><h3>Corrida pelo título <span>· pontos acumulados, 4 primeiros</span></h3>" &
+			    "<div class='dv-leg'>" & __Legenda & "</div></div>" &
+			    "<div class='dv-plot'>" & __Grade &
+			    "<div class='dv-turn' style='left:" & FORMAT ( DIVIDE ( __Metade - 1, __NRod - 1 ) * 100, "0.0", "en-US" ) & "%'><span>Fim do 1º turno</span></div>" &
+			    "<svg viewBox='0 0 1000 300' preserveAspectRatio='none'><defs><linearGradient id='rg' x1='0' y1='0' x2='0' y2='1'>" &
+			    "<stop offset='0' stop-color='" & __prim & "' stop-opacity='.22'/><stop offset='1' stop-color='" & __prim & "' stop-opacity='0'/></linearGradient></defs>" &
+			    __Polilinhas & "</svg>" & __Fins & __XTicks & "</div></section>"
+			VAR __Barras =
+			    CONCATENATEX (
+			        __faixas,
+			        "<div class='dv-bar" & IF ( fGols[FaixaMinutoOrdem] IN { 4, 8 }, " ac" ) & "'><b>" &
+			            FORMAT ( DIVIDE ( [@G], __TotalGols ), "0.0%", "pt-BR" ) & "</b><i style='height:" &
+			            INT ( ROUND ( DIVIDE ( [@G], __MaxG ) * 100, 0 ) ) & "%'></i><span>" & fGols[FaixaMinuto] & "</span></div>",
+			        "",
+			        fGols[FaixaMinutoOrdem], ASC
+			    )
+			VAR __Minuto =
+			    "<section class='dv-card'><div class='dv-h'><h3>Quando saem os gols</h3>" &
+			    IF (
+			        __TotalGols > 0,
+			        "<span><i class='dv-acK'></i>acréscimos · <b style='color:" & __alert & "'>" & FORMAT ( DIVIDE ( __Tardios, __TotalGols ), "0.0%", "pt-BR" ) &
+			            "</b> depois dos 75'</span></div><div class='dv-bars'>" & __Barras & "</div>",
+			        "</div><div class='dv-empty'>Minuto dos gols registrado só a partir de 2014</div>"
+			    ) & "</section>"
+			VAR __Mando =
+			    "<section class='dv-card'><div class='dv-h'><h3>Mando de campo</h3><span>resultado das partidas</span></div>" &
+			    "<div class='dv-stack'>" &
+			    "<div class='dv-sM' style='width:" & FORMAT ( __PM * 100, "0.0", "en-US" ) & "%'>" & FORMAT ( __PM, "0%", "pt-BR" ) & "</div>" &
+			    "<div class='dv-sE' style='width:" & FORMAT ( __PE * 100, "0.0", "en-US" ) & "%'>" & FORMAT ( __PE, "0%", "pt-BR" ) & "</div>" &
+			    "<div class='dv-sV' style='width:" & FORMAT ( __PV * 100, "0.0", "en-US" ) & "%'>" & FORMAT ( __PV, "0%", "pt-BR" ) & "</div></div>" &
+			    "<div class='dv-sleg'><span><i style='background:" & __prim & "'></i>Mandante venceu</span><span><i style='background:" & __neutral & "'></i>Empate</span>" &
+			    "<span><i style='background:" & __blue & "'></i>Visitante venceu</span></div>" &
+			    "<div class='dv-hist'><svg viewBox='0 0 1000 100' preserveAspectRatio='none'><defs><linearGradient id='sg2' x1='0' y1='0' x2='0' y2='1'>" &
+			    "<stop offset='0' stop-color='" & __prim & "' stop-opacity='.35'/><stop offset='1' stop-color='" & __prim & "' stop-opacity='0'/></linearGradient></defs>" &
+			    "<polygon points='0,100 " & __MPts & " 1000,100' fill='url(#sg2)'/>" &
+			    "<polyline points='" & __MPts & "' fill='none' stroke='" & __prim & "' stroke-width='2' vector-effect='non-scaling-stroke' stroke-linejoin='round'/></svg>" &
+			    "<div class='dv-dot' style='left:" & __DotX & "%;top:" & __MDotY & "%'></div></div>" &
+			    "<div class='dv-hcap'><span>% vitórias do mandante, " & __TMin & "–" & __TMax & "</span><span>média <b>" & FORMAT ( __MHist, "0.0%", "pt-BR" ) & "</b></span></div></section>"
+			-- MONTAGEM
+			RETURN
+			    IF (
+			        ISBLANK ( __Temporada ),
+			        __Css & "<div class='dv'><div class='dv-msg'>Selecione uma única temporada no filtro para montar a página.</div></div>",
+			        __Css & "<div class='dv'>" & __Head & "<div class='dv-main'>" & __Champ &
+			            "<div class='dv-tiles'>" & __TileGJ & __TileArt & __TileReb & "</div>" &
+			            __BlocoTabela & __Corrida & __Minuto & __Mando & "</div></div>"
+			    )
+
+			```
+		displayFolder: 92. Páginas HTML
+
+	column Medidas
+		isHidden
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Medidas]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Medidas = calculated
+		mode: import
+		source =
+				SELECTCOLUMNS ( { 1 }, "Medidas", ''[Value] )
+

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
+  "themeCollection": {
+    "baseTheme": {
+      "name": "Fluent2-CY26SU08",
+      "reportVersionAtImport": {
+        "visual": "2.12.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
+      },
+      "type": "SharedResources"
+    },
+    "customTheme": {
+      "name": "BrasileiraoDark.json",
+      "reportVersionAtImport": {
+        "visual": "2.12.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
+      },
+      "type": "RegisteredResources"
+    }
+  },
+  "objects": {
+    "section": [
+      {
+        "properties": {
+          "verticalAlignment": {
+            "expr": {
+              "Literal": {
+                "Value": "'Top'"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "outspacePane": [
+      {
+        "properties": {
+          "expanded": {
+            "expr": {
+              "Literal": {
+                "Value": "true"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "publicCustomVisuals": [
+    "htmlContent443BE3AD55E043BF878BED274D3A6865",
+    "htmlContent443BE3AD55E043BF878BED274D3A6855"
+  ],
+  "resourcePackages": [
+    {
+      "name": "SharedResources",
+      "type": "SharedResources",
+      "items": [
+        {
+          "name": "Fluent2-CY26SU08",
+          "path": "BaseThemes/Fluent2-CY26SU08.json",
+          "type": "BaseTheme"
+        }
+      ]
+    },
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "BrasileiraoDark.json",
+          "path": "BrasileiraoDark.json",
+          "type": "CustomTheme"
+        },
+        {
+          "name": "emblema17905600001.png",
+          "path": "emblema17905600001.png",
+          "type": "Image"
+        },
+        {
+          "name": "fundo-campo17905600002.png",
+          "path": "fundo-campo17905600002.png",
+          "type": "Image"
+        },
+        {
+          "name": "fundo-capa17905600003.png",
+          "path": "fundo-capa17905600003.png",
+          "type": "Image"
+        },
+        {
+          "name": "icone-escudo17905600005.png",
+          "path": "icone-escudo17905600005.png",
+          "type": "Image"
+        },
+        {
+          "name": "icone-jogador17905600006.png",
+          "path": "icone-jogador17905600006.png",
+          "type": "Image"
+        },
+        {
+          "name": "icone-trofeu17905600004.png",
+          "path": "icone-trofeu17905600004.png",
+          "type": "Image"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "useStylableVisualContainerHeader": true,
+    "exportDataMode": "AllowSummarized",
+    "defaultDrillFilterOtherVisuals": true,
+    "allowChangeFilterTypes": true,
+    "useEnhancedTooltips": true,
+    "pagesPosition": "Bottom",
+    "useDefaultAggregateDisplayName": true
+  }
+}

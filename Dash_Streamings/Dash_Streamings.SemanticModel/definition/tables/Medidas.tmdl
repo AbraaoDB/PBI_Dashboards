@@ -1,0 +1,1895 @@
+table Medidas
+	lineageTag: 6582b5e9-cba3-42ae-b266-d5e7d5fba05b
+
+	/// Data mais recente de entrada de título no catálogo — referência para janelas relativas (novidade, YoY). Ignora filtros para permanecer estável.
+	measure 'Data de Referência' = CALCULATE ( MAX ( fStreamingCatalog[date_added] ), REMOVEFILTERS () )
+		formatString: dd/mm/yyyy
+		displayFolder: 99. Técnicas
+		lineageTag: 45fb0ca0-759e-4d04-9404-e87b814b2446
+
+	/// KPI-1 · Total de títulos no catálogo (contagem de show_id).
+	measure 'Total de Títulos' = COUNTROWS ( fStreamingCatalog )
+		formatString: #,0
+		displayFolder: 01. Volume
+		lineageTag: aa1eba74-1614-452a-9253-d2c7e73a8471
+
+	/// KPI-9 · Títulos adicionados no período filtrado (usa relacionamento ativo date_added → dCalendario).
+	measure 'Títulos Adicionados' = [Total de Títulos]
+		formatString: #,0
+		displayFolder: 01. Volume
+		lineageTag: badb373d-2ff0-46d5-aea0-6d63780c1414
+
+	/// Títulos adicionados no mesmo período do ano anterior — base para variação YoY.
+	measure 'Títulos Adicionados AA' =
+			CALCULATE (
+			    [Títulos Adicionados],
+			    SAMEPERIODLASTYEAR ( dCalendario[Data] )
+			)
+		formatString: #,0
+		displayFolder: 99. Técnicas
+		lineageTag: b2e356f3-2e11-4dcc-b326-9a656131ef68
+
+	/// KPI-10 · Variação percentual de títulos adicionados vs. mesmo período do ano anterior.
+	measure 'Var % Títulos YoY' =
+			VAR __Atual    = [Títulos Adicionados]
+			VAR __Anterior = [Títulos Adicionados AA]
+			RETURN
+			    DIVIDE ( __Atual - __Anterior, __Anterior )
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 01. Volume
+		lineageTag: 858eb134-aa0e-4baf-93e9-41928350d2c1
+
+	/// KPI-15 · Fração do catálogo filtrado adicionada nos 12 meses anteriores à Data de Referência (ignora só o filtro de período).
+	measure 'Índice de Novidade' =
+			VAR __Ref = [Data de Referência]
+			VAR __Corte = EDATE ( __Ref, -12 )
+			VAR __Novos =
+			    CALCULATE (
+			        [Total de Títulos],
+			        REMOVEFILTERS ( dCalendario ),
+			        KEEPFILTERS ( fStreamingCatalog[date_added] > __Corte )
+			    )
+			VAR __Total = CALCULATE ( [Total de Títulos], REMOVEFILTERS ( dCalendario ) )
+			RETURN
+			    DIVIDE ( __Novos, __Total )
+		formatString: 0.0%
+		displayFolder: 01. Volume
+		lineageTag: e38920b6-dad1-40ad-bd57-1e952bb0fa74
+
+	/// KPI-14 · Quantidade de países únicos presentes no catálogo filtrado.
+	measure 'Diversidade Geográfica' = DISTINCTCOUNT ( fStreamingCatalog[country] )
+		formatString: #,0
+		displayFolder: 01. Volume
+		lineageTag: c224ea50-38f4-46da-92a7-93d186216eec
+
+	/// KPI-2 · Nota média IMDb dos títulos filtrados (escala 0–10).
+	measure 'IMDb Médio' = AVERAGE ( fStreamingCatalog[imdb_rating] )
+		formatString: 0.0
+		displayFolder: 02. Qualidade
+		lineageTag: b4a10508-2237-41e5-b024-f3ee307c85a4
+
+	/// KPI-3 · Nota média Rotten Tomatoes dos títulos filtrados (% 0–100).
+	measure 'Rotten Tomatoes Médio' = AVERAGE ( fStreamingCatalog[rotten_tomatoes_score] )
+		formatString: 0.0
+		displayFolder: 02. Qualidade
+		lineageTag: 0211cd0a-33d2-45cc-8bf5-9d0e993ceace
+
+	/// KPI-11 · Idade média dos títulos em anos, calculada a partir de release_year vs. ano de referência.
+	measure 'Idade Média (anos)' =
+			VAR __AnoRef = YEAR ( [Data de Referência] )
+			RETURN
+			    AVERAGEX (
+			        fStreamingCatalog,
+			        __AnoRef - fStreamingCatalog[release_year]
+			    )
+		formatString: 0.0
+		displayFolder: 02. Qualidade
+		lineageTag: 151f0a3b-e999-4acb-a040-f466cb4d2658
+
+	/// KPI-4 · Total de horas assistidas em milhões — indicador de engajamento absoluto.
+	measure 'Horas Assistidas (Mi)' = SUM ( fStreamingCatalog[hours_watched_million] )
+		formatString: #,0.0
+		displayFolder: 03. Engajamento
+		lineageTag: 5cd21da1-db12-48c1-b9e5-40ff0c673dda
+
+	/// Média de votos IMDb por título — proxy de alcance/popularidade.
+	measure 'Votos IMDb Médio' = AVERAGE ( fStreamingCatalog[imdb_votes] )
+		formatString: #,0
+		displayFolder: 03. Engajamento
+		lineageTag: a7ac86a3-b5e2-4596-86cb-b8a1c13c6681
+
+	/// KPI-5 · Soma do orçamento de produção em US$ milhões.
+	measure 'Orçamento Total (US$ Mi)' = SUM ( fStreamingCatalog[budget_million_usd] )
+		formatString: "US$ "#,0.0
+		displayFolder: 04. Financeiro
+		lineageTag: 17f4c62d-b060-44da-b656-5af1333f29bc
+
+	/// Orçamento médio por título, considerando apenas títulos com orçamento > 0.
+	measure 'Orçamento Médio (US$ Mi)' =
+			CALCULATE (
+			    AVERAGE ( fStreamingCatalog[budget_million_usd] ),
+			    fStreamingCatalog[budget_million_usd] > 0
+			)
+		formatString: "US$ "#,0.0
+		displayFolder: 04. Financeiro
+		lineageTag: e7fe808b-daa4-41fc-9b16-a649485c1e67
+
+	/// KPI-6 · Horas assistidas por dólar de orçamento. Regra R6: exclui títulos com orçamento zero.
+	measure 'Horas por US$ Mi' =
+			VAR __Horas =
+			    CALCULATE (
+			        [Horas Assistidas (Mi)],
+			        fStreamingCatalog[budget_million_usd] > 0
+			    )
+			VAR __Orcamento = [Orçamento Total (US$ Mi)]
+			RETURN
+			    DIVIDE ( __Horas, __Orcamento )
+		formatString: #,0.00
+		displayFolder: 04. Financeiro
+		lineageTag: a7e955d7-c495-4623-bc04-af29e28de987
+
+	/// KPI-7 · Total de prêmios ganhos pelos títulos filtrados.
+	measure 'Prêmios Ganhos' = SUM ( fStreamingCatalog[awards_won] )
+		formatString: #,0
+		displayFolder: 05. Reconhecimento
+		lineageTag: c20bcf50-c2e7-470d-86aa-fab0e3029509
+
+	/// KPI-8 · Prêmios ganhos por milhão de orçamento (eficiência de prestige content). Exclui orçamento zero.
+	measure 'Prêmios por US$ Mi' =
+			VAR __Premios =
+			    CALCULATE (
+			        [Prêmios Ganhos],
+			        fStreamingCatalog[budget_million_usd] > 0
+			    )
+			VAR __Orcamento = [Orçamento Total (US$ Mi)]
+			RETURN
+			    DIVIDE ( __Premios, __Orcamento )
+		formatString: 0.00
+		displayFolder: 05. Reconhecimento
+		lineageTag: c83da416-acb4-47f9-b900-2c501aaa2b9a
+
+	/// KPI-12 · Duração média em minutos considerando apenas títulos do tipo Movie.
+	measure 'Duração Média Filme (min)' =
+			CALCULATE (
+			    AVERAGE ( fStreamingCatalog[duration_minutes] ),
+			    KEEPFILTERS ( dType[Tipo] = "Movie" )
+			)
+		formatString: #,0
+		displayFolder: 06. Formato
+		lineageTag: 15d42dfc-bd67-4f7b-b4b9-1a47e56ebdb7
+
+	/// KPI-13 · Número médio de temporadas por série (tipo TV Show).
+	measure 'Temporadas Médias (Série)' =
+			CALCULATE (
+			    AVERAGE ( fStreamingCatalog[num_seasons] ),
+			    KEEPFILTERS ( dType[Tipo] = "TV Show" )
+			)
+		formatString: 0.0
+		displayFolder: 06. Formato
+		lineageTag: ad038e95-e9e8-4222-8239-9670cef8b45f
+
+	/// Número médio de episódios por série (tipo TV Show).
+	measure 'Episódios Médios (Série)' =
+			CALCULATE (
+			    AVERAGE ( fStreamingCatalog[num_episodes] ),
+			    KEEPFILTERS ( dType[Tipo] = "TV Show" )
+			)
+		formatString: #,0
+		displayFolder: 06. Formato
+		lineageTag: bb4b509a-8f51-45a9-9392-c16309426a2d
+
+	/// Contagem de títulos do tipo Movie.
+	measure 'Total de Filmes' = CALCULATE ( [Total de Títulos], KEEPFILTERS ( dType[Tipo] = "Movie" ) )
+		formatString: #,0
+		displayFolder: 06. Formato
+		lineageTag: 0001d22e-a790-4578-b6e5-739c9e7f6880
+
+	/// Contagem de títulos do tipo TV Show.
+	measure 'Total de Séries' = CALCULATE ( [Total de Títulos], KEEPFILTERS ( dType[Tipo] = "TV Show" ) )
+		formatString: #,0
+		displayFolder: 06. Formato
+		lineageTag: 87b4b1ef-0166-48ad-a171-c16b82e5d90a
+
+	/// Ranking de plataformas por Total de Títulos (1 = mais títulos).
+	measure 'Ranking Plataforma (Títulos)' =
+			IF (
+			    HASONEVALUE ( dPlatform[Platform] ),
+			    RANKX ( ALL ( dPlatform[Platform] ), [Total de Títulos],, DESC, DENSE )
+			)
+		formatString: 0
+		displayFolder: 07. Rankings
+		lineageTag: f4b41585-ce9c-4c76-a503-960119bf32ed
+
+	/// Ranking de gêneros primários por Total de Títulos.
+	measure 'Ranking Gênero (Títulos)' =
+			IF (
+			    HASONEVALUE ( dGenre[Genero] ),
+			    RANKX ( ALL ( dGenre[Genero] ), [Total de Títulos],, DESC, DENSE )
+			)
+		formatString: 0
+		displayFolder: 07. Rankings
+		lineageTag: 46af53b6-cdba-450c-b2fe-a2cdcaa9d2e6
+
+	/// Ranking de plataformas por Horas Assistidas.
+	measure 'Ranking Plataforma (Horas)' =
+			IF (
+			    HASONEVALUE ( dPlatform[Platform] ),
+			    RANKX ( ALL ( dPlatform[Platform] ), [Horas Assistidas (Mi)],, DESC, DENSE )
+			)
+		formatString: 0
+		displayFolder: 07. Rankings
+		lineageTag: bf97e31a-30df-4b19-ac41-70b9fe7ef687
+
+	/// Fundo da página (tema escuro).
+	measure 'Cor Fundo Página' = "#07070D"
+		displayFolder: 91. Cores
+		lineageTag: 19d0a9d2-669a-4297-98d1-3330228182f3
+
+	/// Fundo base dos painéis.
+	measure 'Cor Fundo Card' = "#11111C"
+		displayFolder: 91. Cores
+		lineageTag: 166351ba-ff86-4d9b-9147-f778a94ffdf6
+
+	/// Topo do degradê dos painéis.
+	measure 'Cor Fundo Card Elevado' = "#1A1A2E"
+		displayFolder: 91. Cores
+		lineageTag: 17458bcb-ea22-4680-9585-49de0b231444
+
+	/// Bordas, trilhos de barra e divisórias.
+	measure 'Cor Trilho' = "#262638"
+		displayFolder: 91. Cores
+		lineageTag: 46c10a70-ccbc-40d6-bb89-83ee68b966b3
+
+	/// Cor de marca do painel (violeta).
+	measure 'Cor Primária' = "#8B5CF6"
+		displayFolder: 91. Cores
+		lineageTag: afe42344-222d-4933-b021-d0ead7bbbb49
+
+	/// Variante escura da primária para glows e fundos.
+	measure 'Cor Primária Escura' = "#4C1D95"
+		displayFolder: 91. Cores
+		lineageTag: bd04063e-e383-43a3-85d6-eeae2d0683d3
+
+	/// Variante clara da primária para texto de destaque.
+	measure 'Cor Destaque Suave' = "#C4B5FD"
+		displayFolder: 91. Cores
+		lineageTag: eeb66747-8158-4f6d-94f4-c58ca2c8ec53
+
+	/// Segunda série (séries de TV) e sobre-índice.
+	measure 'Cor Secundária' = "#22D3EE"
+		displayFolder: 91. Cores
+		lineageTag: 8682a4e2-8205-448e-9109-2df0940f2a9c
+
+	/// Acento quente (sub-índice, degradês).
+	measure 'Cor Acento' = "#F472B6"
+		displayFolder: 91. Cores
+		lineageTag: 8a524c4f-cd47-450e-ae96-b21550a237ef
+
+	/// Variação favorável.
+	measure 'Cor Positiva' = "#34D399"
+		displayFolder: 91. Cores
+		lineageTag: e255b831-3f56-4abc-9347-018833e8df9f
+
+	/// Atenção.
+	measure 'Cor Alerta' = "#FBBF24"
+		displayFolder: 91. Cores
+		lineageTag: 3e39301b-a9d9-43ab-b465-430eb11e610d
+
+	/// Variação desfavorável.
+	measure 'Cor Negativa' = "#F87171"
+		displayFolder: 91. Cores
+		lineageTag: e316317a-a510-495e-970b-5352c1117c14
+
+	/// Texto principal sobre fundo escuro.
+	measure 'Cor Texto' = "#F4F4F8"
+		displayFolder: 91. Cores
+		lineageTag: bdc86fdd-da77-48b9-8677-83be21d1ca26
+
+	/// Texto secundário (contraste acima de 7:1 sobre os cards).
+	measure 'Cor Texto Suave' = "#A1A1B5"
+		displayFolder: 91. Cores
+		lineageTag: bd6d76ef-7b94-45b8-8268-43391c9486b3
+
+	/// Texto sobre preenchimentos fortes.
+	measure 'Cor Texto Sobre Destaque' = "#FFFFFF"
+		displayFolder: 91. Cores
+		lineageTag: 9671887d-5461-41ec-a986-4fe50e0dec65
+
+	/// Preenchimento neutro (não usar em texto).
+	measure 'Cor Neutra' = "#5B5B72"
+		displayFolder: 91. Cores
+		lineageTag: 9ea55990-66eb-412e-88b0-14367b55b53e
+
+	/// Cor de identidade da plataforma no contexto (dimensão ou linha do fato).
+	measure 'Cor Plataforma' =
+			VAR __p =
+			    COALESCE ( SELECTEDVALUE ( dPlatform[Platform] ), SELECTEDVALUE ( fStreamingCatalog[platform] ) )
+			RETURN
+			    SWITCH (
+			        __p,
+			        "Netflix", "#E50914",
+			        "Amazon Prime Video", "#00A8E1",
+			        "Disney+", "#4F7CFF",
+			        "Hulu", "#1CE783",
+			        "HBO Max", "#A259FF",
+			        "Paramount+", "#2DD4BF",
+			        "Apple TV+", "#D4D4DC",
+			        "Peacock", "#FACC15",
+			        "JioCinema", "#EC4899",
+			        "Crunchyroll", "#FF7A1A",
+			        [Cor Primária]
+			    )
+		displayFolder: 91. Cores
+		lineageTag: e20ce9ba-b72b-4873-bb89-d1bc9f546809
+
+	/// Nome curto da plataforma para espaços estreitos.
+	measure 'Plataforma Rótulo' =
+			VAR __p =
+			    COALESCE ( SELECTEDVALUE ( dPlatform[Platform] ), SELECTEDVALUE ( fStreamingCatalog[platform] ) )
+			RETURN
+			    IF ( __p = "Amazon Prime Video", "Prime Video", __p )
+		displayFolder: 99. Técnicas
+		lineageTag: 4f539606-0458-4f24-889f-2959dac433ce
+
+	/// Títulos com ao menos um prêmio.
+	measure 'Títulos Premiados' = CALCULATE ( [Total de Títulos], KEEPFILTERS ( fStreamingCatalog[awards_won] > 0 ) )
+		formatString: #,0
+		displayFolder: 05. Reconhecimento
+		lineageTag: dd7a8ac2-f712-452c-bbe9-d4095c512ea1
+
+	/// Fração de títulos com ao menos um prêmio.
+	measure '% Títulos Premiados' = DIVIDE ( [Títulos Premiados], [Total de Títulos] )
+		formatString: 0.0%
+		displayFolder: 05. Reconhecimento
+		lineageTag: 43b6fb7d-7f23-468a-a138-2d147ca0bb98
+
+	/// Taxa de premiação: prêmios ganhos a cada 100 títulos.
+	measure 'Prêmios por 100 Títulos' = DIVIDE ( [Prêmios Ganhos], [Total de Títulos] ) * 100
+		formatString: 0.0
+		displayFolder: 05. Reconhecimento
+		lineageTag: a9a9be8e-0bb6-4803-86db-df2a973fa4cf
+
+	/// Horas assistidas médias por título, em milhões.
+	measure 'Horas Médias por Título (Mi)' = AVERAGE ( fStreamingCatalog[hours_watched_million] )
+		formatString: #,0.0
+		displayFolder: 03. Engajamento
+		lineageTag: a5da6a3b-c006-434d-9fc7-6b078225bceb
+
+	/// Fração do catálogo produzida fora dos Estados Unidos.
+	measure '% Títulos Fora dos EUA' =
+			DIVIDE (
+			    CALCULATE ( [Total de Títulos], KEEPFILTERS ( fStreamingCatalog[country] <> "United States" ) ),
+			    [Total de Títulos]
+			)
+		formatString: 0.0%
+		displayFolder: 01. Volume
+		lineageTag: 05887298-785e-464a-9f6c-c504e8ab341f
+
+	/// Descrição textual dos filtros ativos (plataforma, tipo, gênero e período).
+	measure 'Contexto Recorte Texto' =
+			VAR __nP = COUNTROWS ( VALUES ( dPlatform[Platform] ) )
+			VAR __P =
+			    IF (
+			        NOT ISFILTERED ( dPlatform[Platform] ), "Todas as plataformas",
+			        IF ( __nP <= 2, CONCATENATEX ( VALUES ( dPlatform[Platform] ), dPlatform[Platform], " + " ), __nP & " plataformas" )
+			    )
+			VAR __T =
+			    IF (
+			        ISFILTERED ( dType[Tipo] ) && COUNTROWS ( VALUES ( dType[Tipo] ) ) = 1,
+			        IF ( SELECTEDVALUE ( dType[Tipo] ) = "Movie", "Filmes", "Séries" ),
+			        "Filmes e séries"
+			    )
+			VAR __nG = COUNTROWS ( VALUES ( dGenre[Genero] ) )
+			VAR __G =
+			    IF ( ISFILTERED ( dGenre[Genero] ), " · " & IF ( __nG = 1, SELECTEDVALUE ( dGenre[Genero] ), __nG & " gêneros" ) )
+			VAR __A0 = YEAR ( MIN ( fStreamingCatalog[date_added] ) )
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __A = IF ( ISBLANK ( __A0 ), "sem dados", IF ( __A0 = __A1, FORMAT ( __A0, "0" ), __A0 & "–" & __A1 ) )
+			RETURN
+			    __P & " · " & __T & __G & " · " & __A
+		displayFolder: 99. Técnicas
+		lineageTag: ac77c253-c61a-4c3a-8bed-8edf2f39d8b9
+
+	/// Folha de estilo comum a todos os blocos HTML (tokens interpolados).
+	measure 'CSS Base HTML' =
+			VAR __Css =
+			    "<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}*{box-sizing:border-box}"
+			    & "body,#htmlViewer,#htmlContent,.htmlViewerEntry,.r,.cd,.pc,.er,.cr{font-family:'Segoe UI',system-ui,sans-serif;color:%TX%;font-size:13px;line-height:1.35;-webkit-font-smoothing:antialiased}"
+			    & ".r{width:100%;height:100vh;position:relative}"
+			    & ".cd{height:100vh;border-radius:18px;padding:20px 24px;background:linear-gradient(160deg,%CARD2% 0%,%CARD% 62%);border:1px solid %LINE%;box-shadow:inset 0 1px 0 #FFFFFF0D;position:relative;overflow:hidden}"
+			    & ".hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}"
+			    & ".ey{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:%TX2%;font-weight:600}"
+			    & ".tt{font-size:18px;font-weight:600;margin-top:3px;letter-spacing:-.01em}"
+			    & ".sb{font-size:13px;color:%TX2%;margin-top:3px}.sb b{color:%TX%;font-weight:600}"
+			    & ".nm{font-variant-numeric:tabular-nums}"
+			    & ".pos{color:%POS%}.neg{color:%NEG%}.warn{color:%WARN%}.mut{color:%TX2%}"
+			    & ".chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:%LINE%;color:%TX%;white-space:nowrap}"
+			    & ".chip.pos{background:%POS%1F;color:%POS%}.chip.neg{background:%NEG%1F;color:%NEG%}.chip.pri{background:%PRI%2E;color:%PRI3%}"
+			    & ".dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}"
+			    & ".bar{height:8px;border-radius:99px;background:%LINE%;overflow:hidden}"
+			    & ".bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:gx .9s cubic-bezier(.2,.7,.2,1) both}"
+			    & "@keyframes gx{from{transform:scaleX(0)}to{transform:scaleX(1)}}"
+			    & "@keyframes gy{from{transform:scaleY(0)}to{transform:scaleY(1)}}"
+			    & "@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}"
+			    & ".fu{animation:fu .6s ease-out both}"
+			    & ".glow{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none}"
+			    & ".tip{position:relative}"
+			    & ".tp{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);background:%BG%F2;border:1px solid %LINE%;border-radius:10px;padding:8px 11px;font-size:12px;line-height:1.55;color:%TX2%;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:30;box-shadow:0 10px 30px #000000A6}"
+			    & ".tp b{color:%TX%}.tp.dn{bottom:auto;top:calc(100% + 8px)}.tp.lf{left:auto;right:0;transform:none}.tp.rt{left:0;transform:none}"
+			    & ".tip:hover .tp{opacity:1}"
+			    & ".vazio{height:100vh;display:grid;place-items:center;color:%TX2%;font-size:14px;text-align:center}"
+			    & "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style>"
+			VAR __1 = SUBSTITUTE ( __Css, "%TX2%", [Cor Texto Suave] )
+			VAR __2 = SUBSTITUTE ( __1, "%TX%", [Cor Texto] )
+			VAR __3 = SUBSTITUTE ( __2, "%CARD2%", [Cor Fundo Card Elevado] )
+			VAR __4 = SUBSTITUTE ( __3, "%CARD%", [Cor Fundo Card] )
+			VAR __5 = SUBSTITUTE ( __4, "%LINE%", [Cor Trilho] )
+			VAR __6 = SUBSTITUTE ( __5, "%POS%", [Cor Positiva] )
+			VAR __7 = SUBSTITUTE ( __6, "%NEG%", [Cor Negativa] )
+			VAR __8 = SUBSTITUTE ( __7, "%WARN%", [Cor Alerta] )
+			VAR __9 = SUBSTITUTE ( __8, "%PRI3%", [Cor Destaque Suave] )
+			VAR __10 = SUBSTITUTE ( __9, "%PRI%", [Cor Primária] )
+			RETURN
+			    SUBSTITUTE ( __10, "%BG%", [Cor Fundo Página] )
+		displayFolder: 92. Páginas HTML
+		lineageTag: e167b478-edb0-43ec-b26d-dc946b555ab9
+
+	/// Barra lateral de navegação (232 × 1080). Itens marcados com %A0%…%A7% recebem a classe on por página.
+	measure 'Menu Base HTML' =
+			VAR __Tot = FORMAT ( CALCULATE ( [Total de Títulos], REMOVEFILTERS () ), "#,0", "pt-BR" )
+			VAR __Pl = CALCULATE ( COUNTROWS ( dPlatform ), REMOVEFILTERS () )
+			VAR __Pa = CALCULATE ( [Diversidade Geográfica], REMOVEFILTERS () )
+			VAR __Ref = FORMAT ( [Data de Referência], "dd/mm/yyyy" )
+			VAR __Svg = "<svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='"
+			VAR __Css =
+			    "<style>.sd{position:absolute;inset:0;background:linear-gradient(180deg,%CARD2% 0%,%BG% 70%);border-right:1px solid %LINE%}"
+			    & ".br{position:absolute;left:22px;top:28px;display:flex;align-items:center;gap:12px}"
+			    & ".lg{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,%PRI% 0%,%ACC% 100%);display:grid;place-items:center;box-shadow:0 8px 24px %PRI%59}"
+			    & ".bn{font-size:18px;font-weight:700;letter-spacing:-.02em}.bs{font-size:12px;color:%TX2%}"
+			    & ".sl{position:absolute;left:30px;top:110px;font-size:12px;letter-spacing:.14em;color:%TX2%;font-weight:600}"
+			    & ".it{position:absolute;left:16px;width:200px;height:44px;border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 14px;color:%TX2%;font-size:14px;font-weight:500}"
+			    & ".it.on{background:linear-gradient(90deg,%PRI%38 0%,%PRI%0A 100%);color:%TX%;font-weight:600;box-shadow:inset 3px 0 0 %PRI%}"
+			    & ".it.on svg{color:%PRI3%}"
+			    & ".st{position:absolute;left:16px;right:16px;bottom:24px;border-radius:14px;padding:16px;background:%PRI%14;border:1px solid %PRI%33}"
+			    & ".st .v{font-size:22px;font-weight:700;margin-top:6px}.st .l{font-size:12px;color:%TX2%;margin-top:4px;line-height:1.5}</style>"
+			VAR __CssT =
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __Css,
+			        "%TX2%", [Cor Texto Suave] ), "%TX%", [Cor Texto] ), "%CARD2%", [Cor Fundo Card Elevado] ),
+			        "%BG%", [Cor Fundo Página] ), "%LINE%", [Cor Trilho] ), "%PRI3%", [Cor Destaque Suave] ), "%ACC%", [Cor Acento] )
+			VAR __CssF = SUBSTITUTE ( __CssT, "%PRI%", [Cor Primária] )
+			VAR __Itens =
+			    "<div class='it %A0%' style='top:140px'>" & __Svg & "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'/></svg>Início</div>"
+			    & "<div class='it %A1%' style='top:192px'>" & __Svg & "M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z'/></svg>Visão Executiva</div>"
+			    & "<div class='it %A2%' style='top:244px'>" & __Svg & "M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17l9 5 9-5'/></svg>Plataformas</div>"
+			    & "<div class='it %A3%' style='top:296px'>" & __Svg & "M13 2L4 14h7l-1 8 9-12h-7z'/></svg>Qualidade &amp; Eficiência</div>"
+			    & "<div class='it %A4%' style='top:348px'>" & __Svg & "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18'/></svg>Mapa Global</div>"
+			    & "<div class='it %A5%' style='top:400px'>" & __Svg & "M8 4h8v4a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 12v4M9 20h6M10 16h4v4h-4z'/></svg>Prêmios &amp; Prestígio</div>"
+			    & "<div class='it %A6%' style='top:452px'>" & __Svg & "M3 17l6-6 4 4 8-8M15 7h6v6'/></svg>Tendências</div>"
+			    & "<div class='it %A7%' style='top:504px'>" & __Svg & "M4 5h16v14H4zM4 10h16M4 15h16M10 5v14'/></svg>Catálogo</div>"
+			RETURN
+			    [CSS Base HTML] & __CssF
+			        & "<div class='r'><div class='sd'></div>"
+			        & "<div class='br'><div class='lg'><svg viewBox='0 0 24 24' width='18' height='18'><path d='M8 5.5v13l11-6.5z' fill='#FFFFFF'/></svg></div>"
+			        & "<div><div class='bn'>StreamIQ</div><div class='bs'>Catalog Intelligence</div></div></div>"
+			        & "<div class='sl'>ANÁLISES</div>" & __Itens
+			        & "<div class='st'><div class='ey'>Base analisada</div><div class='v nm'>" & __Tot & " títulos</div>"
+			        & "<div class='l'>" & __Pl & " plataformas · " & __Pa & " países<br>Dados até " & __Ref & "</div></div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: 70685c87-8782-4774-9cf8-1e230175cf31
+
+	/// Menu lateral com Início ativo.
+	measure 'Menu Início HTML' = SUBSTITUTE ( [Menu Base HTML], "%A0%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 3b31f5af-10b0-4152-a0fc-0bb2a4bace84
+
+	/// Menu lateral com Visão Executiva ativa.
+	measure 'Menu Executiva HTML' = SUBSTITUTE ( [Menu Base HTML], "%A1%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: e2ce2dd1-ed5a-4f5e-b9b5-be9884008bef
+
+	/// Menu lateral com Plataformas ativa.
+	measure 'Menu Plataformas HTML' = SUBSTITUTE ( [Menu Base HTML], "%A2%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 3f5ead6f-c870-4ce5-b5f8-7ebcdfcf0331
+
+	/// Menu lateral com Qualidade & Eficiência ativa.
+	measure 'Menu Eficiência HTML' = SUBSTITUTE ( [Menu Base HTML], "%A3%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: dd68c547-7d1a-4d86-ab7f-3c479ee1d67f
+
+	/// Menu lateral com Mapa Global ativo.
+	measure 'Menu Global HTML' = SUBSTITUTE ( [Menu Base HTML], "%A4%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: a158be2d-6608-4e44-9303-f642475496b7
+
+	/// Menu lateral com Prêmios & Prestígio ativa.
+	measure 'Menu Prêmios HTML' = SUBSTITUTE ( [Menu Base HTML], "%A5%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: c852dc7c-ca21-4c75-91d2-c3d52081d0ed
+
+	/// Menu lateral com Tendências ativa.
+	measure 'Menu Tendências HTML' = SUBSTITUTE ( [Menu Base HTML], "%A6%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 180c5550-d523-4019-ae72-8822b210881e
+
+	/// Menu lateral com Catálogo ativo.
+	measure 'Menu Catálogo HTML' = SUBSTITUTE ( [Menu Base HTML], "%A7%", "on" )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 4cb6d47c-e34b-43be-9d86-aa53ad439975
+
+	/// Molde do cabeçalho de página (820 × 84): %EY% eyebrow, %T% título, %S% frase-insight.
+	measure 'Cabeçalho Base HTML' =
+			VAR __Ctx = SUBSTITUTE ( SUBSTITUTE ( [Contexto Recorte Texto], "&", "&amp;" ), "<", "&lt;" )
+			VAR __Css =
+			    "<style>.hd{height:100vh;display:flex;flex-direction:column;justify-content:center;gap:3px}"
+			    & ".hl{display:flex;align-items:center;gap:10px}"
+			    & ".h1{font-size:28px;font-weight:700;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+			    & ".hs{font-size:13px;color:" & [Cor Texto Suave] & ";white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+			    & ".hs b{color:" & [Cor Texto] & ";font-weight:600}</style>"
+			RETURN
+			    [CSS Base HTML] & __Css
+			        & "<div class='r hd'><div class='hl'><span class='ey' style='color:" & [Cor Destaque Suave] & "'>%EY%</span>"
+			        & "<span class='chip'>" & __Ctx & "</span></div>"
+			        & "<div class='h1'>%T%</div><div class='hs'>%S%</div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: 67907910-d2bf-46e0-a4e6-d866c36974d3
+
+	/// Medalha de 2º lugar.
+	measure 'Cor Prata' = "#CBD5E1"
+		displayFolder: 91. Cores
+		lineageTag: 332419a0-934a-4dbd-b273-001c2695934f
+
+	/// Medalha de 3º lugar.
+	measure 'Cor Bronze' = "#D97706"
+		displayFolder: 91. Cores
+		lineageTag: 86e5385e-bbd0-406a-8116-ff8c0af17620
+
+	/// Nome do país em português (dimensão ou linha do fato).
+	measure 'País Nome' =
+			VAR __P = COALESCE ( SELECTEDVALUE ( dCountry[Pais] ), SELECTEDVALUE ( fStreamingCatalog[country] ) )
+			RETURN
+			    SWITCH (
+			        __P,
+			        "United States", "Estados Unidos", "India", "Índia", "United Kingdom", "Reino Unido", "South Korea", "Coreia do Sul",
+			        "Japan", "Japão", "Spain", "Espanha", "France", "França", "Germany", "Alemanha", "Canada", "Canadá", "Brazil", "Brasil",
+			        "Mexico", "México", "Australia", "Austrália", "Turkey", "Turquia", "China", "China", "Italy", "Itália", "Argentina", "Argentina",
+			        "Nigeria", "Nigéria", "Egypt", "Egito", "Philippines", "Filipinas", "Sweden", "Suécia", "Israel", "Israel",
+			        "Thailand", "Tailândia", "Denmark", "Dinamarca", "Indonesia", "Indonésia", __P
+			    )
+		displayFolder: 99. Técnicas
+		lineageTag: 2cfb7c7a-0faf-43f6-9a7b-50e5638ba5fa
+
+	/// Nome do idioma original em português.
+	measure 'Idioma Nome' =
+			VAR __L = SELECTEDVALUE ( fStreamingCatalog[language] )
+			RETURN
+			    SWITCH (
+			        __L,
+			        "English", "Inglês", "Hindi", "Hindi", "Korean", "Coreano", "Spanish", "Espanhol", "Japanese", "Japonês", "French", "Francês",
+			        "German", "Alemão", "Portuguese", "Português", "Turkish", "Turco", "Mandarin", "Mandarim", "Italian", "Italiano", "Arabic", "Árabe",
+			        "Swedish", "Sueco", "Hebrew", "Hebraico", "Thai", "Tailandês", "Danish", "Dinamarquês", "Indonesian", "Indonésio", "Tagalog", "Tagalo", __L
+			    )
+		displayFolder: 99. Técnicas
+		lineageTag: 35094a57-0250-4b15-b21d-38336dc01b68
+
+	/// Capa do relatório (1920 × 1080): tese, números-chave, parede de plataformas e navegação.
+	measure 'Capa HTML' =
+			VAR __Tot = [Total de Títulos]
+			VAR __Pl = COUNTROWS ( VALUES ( dPlatform[Platform] ) )
+			VAR __Pa = [Diversidade Geográfica]
+			VAR __A0 = YEAR ( MIN ( fStreamingCatalog[date_added] ) )
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __Ref = FORMAT ( [Data de Referência], "dd/mm/yyyy" )
+			VAR __TabP =
+			    ADDCOLUMNS (
+			        VALUES ( dPlatform[Platform] ),
+			        "@t", [Total de Títulos],
+			        "@c", [Cor Plataforma],
+			        "@i", [IMDb Médio]
+			    )
+			VAR __Max = MAXX ( __TabP, [@t] )
+			VAR __Wall =
+			    CONCATENATEX (
+			        __TabP,
+			        VAR __Rk = RANKX ( __TabP, [@t],, DESC )
+			        RETURN
+			            "<div class='tl' style='animation-delay:" & FORMAT ( __Rk * 0.06, "0.00", "en-US" ) & "s'>"
+			                & "<div class='tg' style='background:" & [@c] & "'></div>"
+			                & "<div class='tn' style='color:" & [@c] & "'>" & dPlatform[Platform] & "</div>"
+			                & "<div class='tv nm'>" & FORMAT ( [@t], "#,0", "pt-BR" ) & " <span>títulos</span></div>"
+			                & "<div class='bar'><i style='width:" & INT ( DIVIDE ( [@t], __Max ) * 100 ) & "%;background:" & [@c] & "'></i></div>"
+			                & "<div class='tf'><span>" & FORMAT ( DIVIDE ( [@t], __Tot ), "0.0%", "pt-BR" ) & " do catálogo</span>"
+			                & "<span>IMDb " & FORMAT ( [@i], "0.0", "pt-BR" ) & "</span></div></div>",
+			        "",
+			        [@t], DESC
+			    )
+			VAR __Arrow = "<svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14M13 6l6 6-6 6'/></svg>"
+			VAR __Nav =
+			    "<div class='nv' style='left:100px'><div class='n'>01" & __Arrow & "</div><div class='t'>Visão Executiva</div><div class='q'>Como está o catálogo hoje?</div></div>"
+			    & "<div class='nv' style='left:348px'><div class='n'>02" & __Arrow & "</div><div class='t'>Plataformas</div><div class='q'>Quem domina — e com que qualidade?</div></div>"
+			    & "<div class='nv' style='left:596px'><div class='n'>03" & __Arrow & "</div><div class='t'>Qualidade &amp; Eficiência</div><div class='q'>Onde o orçamento vira audiência?</div></div>"
+			    & "<div class='nv' style='left:844px'><div class='n'>04" & __Arrow & "</div><div class='t'>Mapa Global</div><div class='q'>De onde vem o conteúdo?</div></div>"
+			    & "<div class='nv' style='left:1092px'><div class='n'>05" & __Arrow & "</div><div class='t'>Prêmios &amp; Prestígio</div><div class='q'>Quem converte catálogo em prêmio?</div></div>"
+			    & "<div class='nv' style='left:1340px'><div class='n'>06" & __Arrow & "</div><div class='t'>Tendências</div><div class='q'>Para onde o catálogo está indo?</div></div>"
+			    & "<div class='nv' style='left:1588px'><div class='n'>07" & __Arrow & "</div><div class='t'>Catálogo</div><div class='q'>Busque e filtre qualquer título.</div></div>"
+			VAR __Css =
+			    "<style>.cv{height:100vh;overflow:hidden;background:radial-gradient(ellipse 900px 700px at 78% 38%,%PRI2%80 0%,transparent 70%),radial-gradient(ellipse 700px 500px at 8% 100%,%SEC%1A 0%,transparent 70%),radial-gradient(ellipse 600px 400px at 45% 0%,%ACC%14 0%,transparent 70%),%BG%}"
+			    & ".cv>*{position:absolute}"
+			    & ".top{left:96px;right:96px;top:40px;display:flex;justify-content:space-between;align-items:center}"
+			    & ".brd{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:700}.brd small{display:block;font-size:12px;color:%TX2%;font-weight:400}"
+			    & ".lg{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,%PRI% 0%,%ACC% 100%);display:grid;place-items:center;box-shadow:0 8px 24px %PRI%59}"
+			    & ".e2{left:96px;top:164px;font-size:13px;letter-spacing:.2em;color:%PRI3%;font-weight:700}"
+			    & ".h0{left:92px;top:190px;width:960px;font-size:80px;line-height:1.02;font-weight:800;letter-spacing:-.04em}"
+			    & ".h0 span{background:linear-gradient(90deg,%PRI3% 0%,%ACC% 55%,%SEC% 100%);-webkit-background-clip:text;background-clip:text;color:transparent}"
+			    & ".ld{left:96px;top:382px;width:860px;font-size:20px;line-height:1.55;color:%TX2%}.ld b{color:%TX%;font-weight:600}"
+			    & ".ks{left:96px;top:492px;display:flex}.k{padding:0 36px;border-left:1px solid %LINE%}.k:first-child{padding-left:0;border-left:0}"
+			    & ".kv{font-size:40px;font-weight:700;letter-spacing:-.02em}.kl{font-size:12px;color:%TX2%;text-transform:uppercase;letter-spacing:.12em;margin-top:2px}"
+			    & ".cta{top:640px;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:600}"
+			    & ".c1{left:96px;width:268px;background:linear-gradient(90deg,%PRI% 0%,%ACC% 100%);box-shadow:0 12px 36px %PRI%59}"
+			    & ".c2{left:380px;width:260px;border:1px solid %LINE%;background:%CARD%B3}"
+			    & ".wl{left:1064px;top:112px;font-size:12px;letter-spacing:.16em;color:%TX2%;font-weight:600}"
+			    & ".wall{left:1064px;top:144px;width:760px;display:grid;grid-template-columns:1fr 1fr;gap:14px;transform:perspective(1800px) rotateY(-9deg);transform-origin:right center}"
+			    & ".tl{position:relative;height:118px;border-radius:16px;padding:14px 18px 12px;background:linear-gradient(160deg,%CARD2%F2 0%,%CARD%F2 100%);border:1px solid %LINE%;overflow:hidden;animation:fu .6s ease-out both}"
+			    & ".tg{position:absolute;right:-40px;top:-50px;width:140px;height:140px;border-radius:50%;filter:blur(45px);opacity:.32}"
+			    & ".tn{position:relative;font-size:21px;font-weight:800;letter-spacing:-.01em}"
+			    & ".tv{position:relative;font-size:15px;font-weight:600;margin:3px 0 10px}.tv span{color:%TX2%;font-weight:400;font-size:13px}"
+			    & ".tf{position:relative;display:flex;justify-content:space-between;font-size:12px;color:%TX2%;margin-top:8px}"
+			    & ".nl{left:100px;top:846px;font-size:12px;letter-spacing:.16em;color:%TX2%;font-weight:600}"
+			    & ".nv{top:880px;width:232px;height:132px;border-radius:16px;padding:16px 18px;background:linear-gradient(160deg,%CARD2%E6 0%,%CARD%E6 100%);border:1px solid %LINE%}"
+			    & ".nv .n{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:%PRI3%;letter-spacing:.12em}"
+			    & ".nv .t{font-size:17px;font-weight:700;margin-top:10px;letter-spacing:-.01em}.nv .q{font-size:13px;color:%TX2%;margin-top:6px;line-height:1.4}"
+			    & ".ft{left:96px;right:96px;bottom:18px;display:flex;justify-content:space-between;font-size:12px;color:%TX2%}</style>"
+			VAR __C1 = SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __Css, "%TX2%", [Cor Texto Suave] ), "%TX%", [Cor Texto] ), "%CARD2%", [Cor Fundo Card Elevado] ), "%CARD%", [Cor Fundo Card] )
+			VAR __C2 = SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __C1, "%LINE%", [Cor Trilho] ), "%PRI3%", [Cor Destaque Suave] ), "%PRI2%", [Cor Primária Escura] ), "%PRI%", [Cor Primária] )
+			VAR __C3 = SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __C2, "%ACC%", [Cor Acento] ), "%SEC%", [Cor Secundária] ), "%BG%", [Cor Fundo Página] )
+			RETURN
+			    [CSS Base HTML] & __C3
+			        & "<div class='r cv'>"
+			        & "<div class='top'><div class='brd'><div class='lg'><svg viewBox='0 0 24 24' width='18' height='18'><path d='M8 5.5v13l11-6.5z' fill='#FFFFFF'/></svg></div>"
+			        & "<div>StreamIQ<small>Catalog Intelligence</small></div></div>"
+			        & "<span class='chip pri'>Dados até " & __Ref & "</span></div>"
+			        & "<div class='e2'>PAINEL ANALÍTICO · STREAMING GLOBAL</div>"
+			        & "<div class='h0'>O streaming global,<br><span>decodificado.</span></div>"
+			        & "<div class='ld'><b>" & FORMAT ( __Tot, "#,0", "pt-BR" ) & " títulos</b> de <b>" & __Pl & " plataformas</b>, produzidos em <b>" & __Pa
+			        & " países</b> e adicionados entre " & __A0 & " e " & __A1 & " — volume, qualidade, audiência e prestígio lado a lado.</div>"
+			        & "<div class='ks'>"
+			        & "<div class='k'><div class='kv nm'>" & FORMAT ( __Tot, "#,0", "pt-BR" ) & "</div><div class='kl'>Títulos</div></div>"
+			        & "<div class='k'><div class='kv nm'>" & FORMAT ( [Horas Assistidas (Mi)] / 1000, "#,0.0", "pt-BR" ) & " bi</div><div class='kl'>Horas assistidas</div></div>"
+			        & "<div class='k'><div class='kv nm'>" & FORMAT ( [IMDb Médio], "0.0", "pt-BR" ) & "</div><div class='kl'>IMDb médio</div></div>"
+			        & "<div class='k'><div class='kv nm'>" & FORMAT ( [Prêmios Ganhos], "#,0", "pt-BR" ) & "</div><div class='kl'>Prêmios</div></div></div>"
+			        & "<div class='cta c1'>Explorar o painel " & __Arrow & "</div>"
+			        & "<div class='cta c2'>Buscar no catálogo</div>"
+			        & "<div class='wl'>CATÁLOGO POR PLATAFORMA</div>"
+			        & "<div class='wall'>" & __Wall & "</div>"
+			        & "<div class='nl'>NAVEGUE PELAS ANÁLISES</div>" & __Nav
+			        & "<div class='ft'><span>Fonte: Streaming Content Catalog: Netflix, Prime, Disney+ (Kaggle, Meruva Kodanda Suraj) — dados sintéticos para fins educacionais · horas assistidas em milhões · orçamento em US$ milhões</span>"
+			        & "<span>Datas pela entrada do título no catálogo</span></div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: 504f9a36-c9b6-4360-8149-5c674c6202b2
+
+	/// Cabeçalho da Visão Executiva com frase-insight do recorte.
+	measure 'Cabeçalho Executiva HTML' =
+			VAR __TabP = ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@t", [Total de Títulos] )
+			VAR __Top = TOPN ( 1, __TabP, [@t], DESC )
+			VAR __Nome = MAXX ( __Top, dPlatform[Platform] )
+			VAR __Sh = DIVIDE ( MAXX ( __Top, [@t] ), [Total de Títulos] )
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __Atual = CALCULATE ( [Total de Títulos], dCalendario[Ano] = __A1 )
+			VAR __Ant = CALCULATE ( [Total de Títulos], dCalendario[Ano] = __A1 - 1 )
+			VAR __Var = DIVIDE ( __Atual - __Ant, __Ant )
+			VAR __S =
+			    IF (
+			        ISBLANK ( [Total de Títulos] ), "Nenhum título no recorte atual.",
+			        "<b>" & __Nome & "</b> concentra <b>" & FORMAT ( __Sh, "0%", "pt-BR" ) & "</b> do recorte"
+			            & IF ( NOT ISBLANK ( __Var ),
+			                "; as adições de " & __A1 & " " & IF ( __Var >= 0, "cresceram", "caíram" ) & " <b>"
+			                    & FORMAT ( ABS ( __Var ), "0%", "pt-BR" ) & "</b> sobre " & __A1 - 1 & "." ,
+			                "." )
+			    )
+			RETURN
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( [Cabeçalho Base HTML], "%EY%", "01 · Visão Executiva" ),
+			        "%T%", "O catálogo em uma tela" ), "%S%", __S )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 4b17308e-5f07-490f-aed5-0929757fe6fd
+
+	/// KPI dominante (total de títulos) com variação do último ano e colunas empilhadas de adições por ano.
+	measure 'Executiva Hero HTML' =
+			VAR __Tot = [Total de Títulos]
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __A0 = MAX ( YEAR ( MIN ( fStreamingCatalog[date_added] ) ), __A1 - 26 )
+			VAR __Atual = CALCULATE ( [Total de Títulos], dCalendario[Ano] = __A1 )
+			VAR __Ant = CALCULATE ( [Total de Títulos], dCalendario[Ano] = __A1 - 1 )
+			VAR __Var = DIVIDE ( __Atual - __Ant, __Ant )
+			VAR __Serie =
+			    ADDCOLUMNS (
+			        FILTER ( VALUES ( dCalendario[Ano] ), dCalendario[Ano] >= __A0 && dCalendario[Ano] <= __A1 ),
+			        "@f", [Total de Filmes] + 0,
+			        "@s", [Total de Séries] + 0,
+			        "@i", [IMDb Médio]
+			    )
+			VAR __Max = MAXX ( __Serie, [@f] + [@s] )
+			VAR __Pico = MAXX ( TOPN ( 1, __Serie, [@f] + [@s], DESC, dCalendario[Ano], DESC ), dCalendario[Ano] )
+			VAR __Cols =
+			    CONCATENATEX (
+			        __Serie,
+			        VAR __A = dCalendario[Ano]
+			        VAR __T = [@f] + [@s]
+			        VAR __Cl = IF ( __A >= __A1 - 3, " lf", IF ( __A <= __A0 + 2, " rt", "" ) )
+			        RETURN
+			            "<div class='cl tip'>"
+			                & IF ( __A = __A1 || __A = __Pico, "<span class='vl nm'>" & FORMAT ( __T, "#,0", "pt-BR" ) & "</span>" )
+			                & "<div class='stk" & IF ( __A = __A1, " hi", "" ) & "' style='height:" & FORMAT ( DIVIDE ( __T, __Max ) * 100, "0.0", "en-US" )
+			                & "%;animation-delay:" & FORMAT ( ( __A - __A0 ) * 0.02, "0.00", "en-US" ) & "s'>"
+			                & "<i class='s' style='flex:" & [@s] & " 1 0'></i><i class='f' style='flex:" & [@f] & " 1 0'></i></div>"
+			                & IF ( MOD ( __A, 5 ) = 0 || __A = __A1, "<span class='yl'>" & __A & "</span>" )
+			                & "<div class='tp" & __Cl & "'><b>" & __A & "</b> · " & FORMAT ( __T, "#,0", "pt-BR" ) & " títulos adicionados<br>"
+			                & "Filmes <b>" & FORMAT ( [@f], "#,0", "pt-BR" ) & "</b> · Séries <b>" & FORMAT ( [@s], "#,0", "pt-BR" ) & "</b><br>"
+			                & "IMDb médio <b>" & FORMAT ( [@i], "0.0", "pt-BR" ) & "</b></div></div>",
+			        "",
+			        dCalendario[Ano], ASC
+			    )
+			VAR __Css =
+			    "<style>.big{font-size:64px;font-weight:800;letter-spacing:-.035em;line-height:1.05;margin-top:2px}"
+			    & ".lgd{display:flex;gap:16px;font-size:12px;color:" & [Cor Texto Suave] & ";align-items:center}.lgd span{display:flex;align-items:center;gap:6px}"
+			    & ".cap{font-size:12px;color:" & [Cor Texto Suave] & ";text-align:right;margin-top:8px}"
+			    & ".ch{position:absolute;left:24px;right:24px;top:178px;bottom:46px;display:flex;align-items:flex-end;gap:5px;border-bottom:1px solid " & [Cor Trilho] & "}"
+			    & ".cl{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;min-width:0}"
+			    & ".stk{display:flex;flex-direction:column;border-radius:5px 5px 1px 1px;overflow:hidden;transform-origin:bottom;animation:gy .8s cubic-bezier(.2,.7,.2,1) both}"
+			    & ".stk i{display:block;min-height:0}"
+			    & ".stk .f{background:linear-gradient(180deg," & [Cor Primária] & " 0%," & [Cor Primária Escura] & " 100%)}"
+			    & ".stk .s{background:linear-gradient(180deg," & [Cor Secundária] & " 0%," & [Cor Secundária] & "99 100%)}"
+			    & ".stk.hi{box-shadow:0 0 0 1px " & [Cor Destaque Suave] & ",0 0 26px " & [Cor Primária] & "80}"
+			    & ".cl:hover .stk{filter:brightness(1.3)}"
+			    & ".vl{font-size:12px;font-weight:700;text-align:center;margin-bottom:4px;white-space:nowrap}"
+			    & ".yl{position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);font-size:12px;color:" & [Cor Texto Suave] & "}</style>"
+			RETURN
+			    IF (
+			        ISBLANK ( __Tot ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='glow' style='width:460px;height:240px;right:-80px;top:-110px;background:" & [Cor Primária] & ";opacity:.28'></div>"
+			            & "<div class='hdr'><div><div class='ey'>Títulos no catálogo</div>"
+			            & "<div class='big nm'>" & FORMAT ( __Tot, "#,0", "pt-BR" ) & "</div>"
+			            & "<div class='sb'>"
+			            & IF ( NOT ISBLANK ( __Var ),
+			                "<span class='chip " & IF ( __Var >= 0, "pos'>" & UNICHAR ( 9650 ), "neg'>" & UNICHAR ( 9660 ) ) & " "
+			                    & FORMAT ( ABS ( __Var ), "0.0%", "pt-BR" ) & "</span>&nbsp; <b>" & FORMAT ( __Atual, "#,0", "pt-BR" ) & "</b> adições em "
+			                    & __A1 & " vs <b>" & FORMAT ( __Ant, "#,0", "pt-BR" ) & "</b> em " & __A1 - 1,
+			                "Sem ano anterior para comparar no recorte" )
+			            & "</div></div>"
+			            & "<div><div class='lgd'><span><i class='dot' style='background:" & [Cor Primária] & "'></i>Filmes · "
+			            & FORMAT ( [Total de Filmes] + 0, "#,0", "pt-BR" ) & "</span><span><i class='dot' style='background:" & [Cor Secundária] & "'></i>Séries · "
+			            & FORMAT ( [Total de Séries] + 0, "#,0", "pt-BR" ) & "</span></div>"
+			            & "<div class='cap'>Títulos adicionados por ano · " & __A0 & "–" & __A1 & "</div></div></div>"
+			            & "<div class='ch'>" & __Cols & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: e01cf6c3-6a77-443a-a3b9-02532172e095
+
+	/// KPIs de apoio: qualidade (com distribuição IMDb), audiência (sparkline), novidade (anel) e eficiência de orçamento.
+	measure 'Executiva KPIs HTML' =
+			VAR __Imdb = [IMDb Médio]
+			VAR __Rt = [Rotten Tomatoes Médio]
+			VAR __Hist =
+			    ADDCOLUMNS (
+			        GENERATESERIES ( 2, 9, 1 ),
+			        "@n",
+			            VAR __V = [Value]
+			            RETURN
+			                CALCULATE (
+			                    [Total de Títulos],
+			                    KEEPFILTERS ( fStreamingCatalog[imdb_rating] >= __V && fStreamingCatalog[imdb_rating] < __V + 1 )
+			                ) + 0
+			    )
+			VAR __HMax = MAXX ( __Hist, [@n] )
+			VAR __HistHtml =
+			    CONCATENATEX (
+			        __Hist,
+			        "<i style='height:" & INT ( DIVIDE ( [@n], __HMax ) * 100 ) & "%;background:"
+			            & IF ( [Value] = INT ( __Imdb ), [Cor Destaque Suave], [Cor Primária] & "80" ) & "'></i>",
+			        "",
+			        [Value], ASC
+			    )
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __Sp =
+			    ADDCOLUMNS (
+			        FILTER ( VALUES ( dCalendario[Ano] ), dCalendario[Ano] > __A1 - 12 && dCalendario[Ano] <= __A1 ),
+			        "@h", [Horas Assistidas (Mi)] + 0
+			    )
+			VAR __SN = COUNTROWS ( __Sp )
+			VAR __SMax = MAXX ( __Sp, [@h] )
+			VAR __SMin = MINX ( __Sp, dCalendario[Ano] )
+			VAR __Pts =
+			    CONCATENATEX (
+			        __Sp,
+			        FORMAT ( DIVIDE ( ( dCalendario[Ano] - __SMin ) * 150, MAX ( __SN - 1, 1 ) ) + 4, "0.0", "en-US" ) & ","
+			            & FORMAT ( 50 - DIVIDE ( [@h] * 44, __SMax ), "0.0", "en-US" ),
+			        " ",
+			        dCalendario[Ano], ASC
+			    )
+			VAR __Spark =
+			    IF (
+			        __SN >= 2,
+			        "<svg viewBox='0 0 158 54' width='158' height='54'><defs><linearGradient id='ga' x1='0' y1='0' x2='0' y2='1'>"
+			            & "<stop offset='0' stop-color='" & [Cor Secundária] & "' stop-opacity='.45'/><stop offset='1' stop-color='" & [Cor Secundária] & "' stop-opacity='0'/></linearGradient></defs>"
+			            & "<polygon points='4,52 " & __Pts & " 154,52' fill='url(#ga)'/>"
+			            & "<polyline points='" & __Pts & "' fill='none' stroke='" & [Cor Secundária] & "' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/></svg>"
+			    )
+			VAR __Nov = [Índice de Novidade]
+			VAR __NovPct = INT ( MIN ( __Nov, 1 ) * 100 )
+			VAR __Eff = [Horas por US$ Mi]
+			VAR __Ico = "<svg viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='"
+			VAR __Css =
+			    "<style>.cd{padding:8px 24px}.kr{display:flex;align-items:center;gap:16px;height:25%;border-bottom:1px solid " & [Cor Trilho] & "}.kr:last-child{border-bottom:0}"
+			    & ".ki{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;flex:none}"
+			    & ".kb{flex:1;min-width:0}.kv{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.15}.kv small{font-size:14px;color:" & [Cor Texto Suave] & ";font-weight:500;margin-left:3px}"
+			    & ".kx{flex:none;width:158px;display:flex;justify-content:flex-end;align-items:center}"
+			    & ".hg{display:flex;align-items:flex-end;gap:3px;height:50px;width:158px}.hg i{flex:1;border-radius:3px 3px 1px 1px;min-height:2px;transform-origin:bottom;animation:gy .8s ease-out both}"
+			    & ".hx{display:flex;justify-content:space-between;font-size:12px;color:" & [Cor Texto Suave] & ";width:158px;margin-top:3px}"
+			    & ".rg{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(" & [Cor Acento] & " " & __NovPct & "%," & [Cor Trilho] & " 0)}"
+			    & ".rg div{width:52px;height:52px;border-radius:50%;background:" & [Cor Fundo Card] & ";display:grid;place-items:center;font-size:13px;font-weight:700}"
+			    & ".ef{font-size:26px;font-weight:700;color:" & [Cor Positiva] & "}.ef small{display:block;font-size:12px;color:" & [Cor Texto Suave] & ";font-weight:500;text-align:right}</style>"
+			RETURN
+			    IF (
+			        ISBLANK ( [Total de Títulos] ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css & "<div class='cd'>"
+			            & "<div class='kr'><div class='ki' style='background:" & [Cor Primária] & "24;color:" & [Cor Destaque Suave] & "'>" & __Ico
+			            & "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z'/></svg></div>"
+			            & "<div class='kb'><div class='ey'>Nota média IMDb</div><div class='kv nm'>" & FORMAT ( __Imdb, "0.0", "pt-BR" ) & "<small>/10</small></div>"
+			            & "<div class='sb'>Crítica (Rotten Tomatoes) <b>" & FORMAT ( __Rt, "0.0", "pt-BR" ) & "%</b></div></div>"
+			            & "<div class='kx' style='flex-direction:column;align-items:flex-end'><div class='hg'>" & __HistHtml & "</div><div class='hx'><span>2</span><span>distribuição</span><span>10</span></div></div></div>"
+			            & "<div class='kr'><div class='ki' style='background:" & [Cor Secundária] & "24;color:" & [Cor Secundária] & "'>" & __Ico
+			            & "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z'/></svg></div>"
+			            & "<div class='kb'><div class='ey'>Horas assistidas</div><div class='kv nm'>" & FORMAT ( [Horas Assistidas (Mi)] / 1000, "#,0.0", "pt-BR" ) & "<small>bi</small></div>"
+			            & "<div class='sb'><b>" & FORMAT ( [Horas Médias por Título (Mi)], "#,0.0", "pt-BR" ) & " mi</b> por título · 12 anos no gráfico</div></div>"
+			            & "<div class='kx'>" & __Spark & "</div></div>"
+			            & "<div class='kr'><div class='ki' style='background:" & [Cor Acento] & "24;color:" & [Cor Acento] & "'>" & __Ico
+			            & "M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8'/></svg></div>"
+			            & "<div class='kb'><div class='ey'>Índice de novidade</div><div class='kv nm'>" & FORMAT ( __Nov, "0.0%", "pt-BR" ) & "</div>"
+			            & "<div class='sb'>do catálogo entrou nos 12 meses até " & FORMAT ( [Data de Referência], "dd/mm/yyyy" ) & "</div></div>"
+			            & "<div class='kx'><div class='rg'><div class='nm'>12m</div></div></div></div>"
+			            & "<div class='kr'><div class='ki' style='background:" & [Cor Positiva] & "24;color:" & [Cor Positiva] & "'>" & __Ico
+			            & "M12 2v20M17 6.5c0-1.9-2.2-3.5-5-3.5s-5 1.6-5 3.5 2.2 3.5 5 3.5 5 1.6 5 3.5-2.2 3.5-5 3.5-5-1.6-5-3.5'/></svg></div>"
+			            & "<div class='kb'><div class='ey'>Orçamento de produção</div><div class='kv nm'>US$ " & FORMAT ( [Orçamento Total (US$ Mi)] / 1000, "#,0.0", "pt-BR" ) & "<small>bi</small></div>"
+			            & "<div class='sb'>média de <b>US$ " & FORMAT ( [Orçamento Médio (US$ Mi)], "#,0.0", "pt-BR" ) & " mi</b> por filme</div></div>"
+			            & "<div class='kx'><div class='ef nm'>" & IF ( ISBLANK ( __Eff ), "—", FORMAT ( __Eff, "0.0", "pt-BR" ) ) & "<small>h assistidas por US$</small></div></div></div>"
+			            & "</div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: ec0cdf18-56d6-4190-943e-95fd940f06ee
+
+	/// Três achados acionáveis do recorte: concentração, eficiência e qualidade.
+	measure 'Executiva Insights HTML' =
+			VAR __Tot = [Total de Títulos]
+			VAR __TabP = ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@t", [Total de Títulos], "@i", [IMDb Médio] )
+			VAR __NP = COUNTROWS ( FILTER ( __TabP, [@t] > 0 ) )
+			VAR __Top = TOPN ( 1, __TabP, [@t], DESC )
+			VAR __TopN = MAXX ( __Top, dPlatform[Platform] )
+			VAR __TopS = DIVIDE ( MAXX ( __Top, [@t] ), __Tot )
+			VAR __Top3 = DIVIDE ( SUMX ( TOPN ( 3, __TabP, [@t], DESC ), [@t] ), __Tot )
+			VAR __TabG = FILTER ( ADDCOLUMNS ( VALUES ( dGenre[Genero] ), "@e", [Horas por US$ Mi], "@n", [Total de Títulos] ), NOT ISBLANK ( [@e] ) && [@n] >= 30 )
+			VAR __GB = TOPN ( 1, __TabG, [@e], DESC )
+			VAR __GW = TOPN ( 1, __TabG, [@e], ASC )
+			VAR __GBn = MAXX ( __GB, dGenre[Genero] )
+			VAR __GBv = MAXX ( __GB, [@e] )
+			VAR __GWn = MAXX ( __GW, dGenre[Genero] )
+			VAR __GWv = MAXX ( __GW, [@e] )
+			VAR __Q = TOPN ( 1, FILTER ( __TabP, [@t] >= 100 ), [@i], DESC )
+			VAR __Qn = MAXX ( __Q, dPlatform[Platform] )
+			VAR __Qv = MAXX ( __Q, [@i] )
+			VAR __Avg = [IMDb Médio]
+			VAR __I1 =
+			    IF (
+			        __NP <= 1,
+			        "Recorte de uma plataforma: <b>" & __TopN & "</b>, com <b>" & FORMAT ( __Tot, "#,0", "pt-BR" ) & "</b> títulos.",
+			        "<b>" & __TopN & "</b> responde por <b>" & FORMAT ( __TopS, "0%", "pt-BR" ) & "</b> do catálogo; as três maiores somam <b>"
+			            & FORMAT ( __Top3, "0%", "pt-BR" ) & "</b>."
+			    )
+			VAR __A1 = IF ( __NP <= 1, "Compare com as demais plataformas na página 02.", "Dependência alta: diversificar parceiros reduz o risco de catálogo." )
+			VAR __I2 =
+			    IF (
+			        ISBLANK ( __GBn ) || __GBn = __GWn,
+			        "Sem gêneros com orçamento suficiente para comparar eficiência neste recorte.",
+			        "<b>" & __GBn & "</b> gera <b>" & FORMAT ( __GBv, "0.0", "pt-BR" ) & " h</b> assistidas por US$ investido — <b>"
+			            & FORMAT ( DIVIDE ( __GBv, __GWv ), "0.0", "pt-BR" ) & "×</b> o gênero menos eficiente (" & __GWn & ")."
+			    )
+			VAR __A2 = "Priorize formatos de baixo custo com audiência comprovada no greenlight."
+			VAR __I3 =
+			    SWITCH (
+			        TRUE (),
+			        __NP <= 1,
+			        "Nota média do recorte: <b>" & FORMAT ( __Avg, "0.0", "pt-BR" ) & "</b> — " & FORMAT ( __Avg - CALCULATE ( [IMDb Médio], REMOVEFILTERS ( dPlatform ) ), "+0.0;-0.0;0.0", "pt-BR" )
+			            & " ponto vs todas as plataformas no mesmo recorte.",
+			        ISBLANK ( __Qn ),
+			        "Amostra pequena demais para ranquear qualidade por plataforma.",
+			        "<b>" & __Qn & "</b> tem a melhor nota média (<b>" & FORMAT ( __Qv, "0.0", "pt-BR" ) & "</b>), "
+			            & FORMAT ( __Qv - __Avg, "+0.0;-0.0", "pt-BR" ) & " ponto sobre a média do recorte."
+			    )
+			VAR __A3 = "Use a curadoria do líder como referência de qualidade."
+			VAR __Row = "<div class='in'><div class='nb'>%N%</div><div><div class='ey' style='color:%C%'>%L%</div><div class='ix'>%I%</div><div class='ac'>%A%</div></div></div>"
+			VAR __Css =
+			    "<style>.in{display:flex;gap:14px;padding:13px 0;border-top:1px solid " & [Cor Trilho] & "}.in:first-of-type{border-top:0}"
+			    & ".nb{width:30px;height:30px;border-radius:10px;flex:none;display:grid;place-items:center;font-weight:700;font-size:13px;background:" & [Cor Primária] & "2E;color:" & [Cor Destaque Suave] & "}"
+			    & ".ix{font-size:14px;line-height:1.45;margin-top:3px}.ix b{font-weight:700}.ac{font-size:12px;color:" & [Cor Texto Suave] & ";margin-top:4px}"
+			    & ".it2{margin-top:14px}</style>"
+			RETURN
+			    [CSS Base HTML] & __Css & "<div class='cd'><div class='ey'>O que exige atenção</div><div class='tt'>Três achados do recorte atual</div><div class='it2'>"
+			        & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __Row, "%N%", "1" ), "%C%", [Cor Destaque Suave] ), "%L%", "Concentração" ), "%I%", __I1 ), "%A%", __A1 )
+			        & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __Row, "%N%", "2" ), "%C%", [Cor Positiva] ), "%L%", "Eficiência" ), "%I%", __I2 ), "%A%", __A2 )
+			        & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( __Row, "%N%", "3" ), "%C%", [Cor Secundária] ), "%L%", "Qualidade" ), "%I%", __I3 ), "%A%", __A3 )
+			        & "</div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: 0978aaed-39ba-492e-8f48-8496b9515f65
+
+	/// Top 10 gêneros: volume (escala única), participação, nota, mix filme/série e horas.
+	measure 'Executiva Gêneros HTML' =
+			VAR __Tot = [Total de Títulos]
+			VAR __Avg = [IMDb Médio]
+			VAR __Tab =
+			    TOPN (
+			        10,
+			        ADDCOLUMNS (
+			            VALUES ( dGenre[Genero] ),
+			            "@t", [Total de Títulos],
+			            "@f", [Total de Filmes] + 0,
+			            "@i", [IMDb Médio],
+			            "@h", [Horas Assistidas (Mi)]
+			        ),
+			        [@t], DESC
+			    )
+			VAR __Max = MAXX ( __Tab, [@t] )
+			VAR __Rows =
+			    CONCATENATEX (
+			        FILTER ( __Tab, [@t] > 0 ),
+			        VAR __Rk = RANKX ( __Tab, [@t],, DESC, DENSE )
+			        VAR __Pf = INT ( DIVIDE ( [@f], [@t] ) * 100 )
+			        RETURN
+			            "<div class='gr'><span class='rk nm'>" & __Rk & "</span><span class='gn'>" & dGenre[Genero] & "</span>"
+			                & "<div class='bar'><i style='width:" & INT ( DIVIDE ( [@t], __Max ) * 100 ) & "%;background:linear-gradient(90deg," & [Cor Primária Escura] & "," & [Cor Primária] & ");animation-delay:" & FORMAT ( __Rk * 0.05, "0.00", "en-US" ) & "s'></i></div>"
+			                & "<span class='nm r1'>" & FORMAT ( [@t], "#,0", "pt-BR" ) & "</span>"
+			                & "<span class='nm r1 mut'>" & FORMAT ( DIVIDE ( [@t], __Tot ), "0.0%", "pt-BR" ) & "</span>"
+			                & "<span class='r1'><span class='chip " & IF ( [@i] >= __Avg + 0.05, "pos", IF ( [@i] <= __Avg - 0.05, "neg", "" ) ) & "'>" & FORMAT ( [@i], "0.0", "pt-BR" ) & "</span></span>"
+			                & "<div class='mx tip'><i style='width:" & __Pf & "%;background:" & [Cor Primária] & "'></i><i style='width:" & 100 - __Pf & "%;background:" & [Cor Secundária] & "'></i>"
+			                & "<div class='tp lf'>" & dGenre[Genero] & ": <b>" & __Pf & "%</b> filmes · <b>" & 100 - __Pf & "%</b> séries</div></div>"
+			                & "<span class='nm r1'>" & FORMAT ( [@h] / 1000, "#,0.0", "pt-BR" ) & " bi</span></div>",
+			        "",
+			        [@t], DESC
+			    )
+			VAR __G = "display:grid;grid-template-columns:24px 128px 1fr 64px 60px 64px 118px 76px;gap:14px;align-items:center"
+			VAR __Css =
+			    "<style>.gh{" & __G & ";font-size:12px;color:" & [Cor Texto Suave] & ";text-transform:uppercase;letter-spacing:.08em;margin:14px 0 4px;padding-bottom:8px;border-bottom:1px solid " & [Cor Trilho] & "}"
+			    & ".gr{" & __G & ";height:29px;font-size:13px}.gr:hover{background:" & [Cor Trilho] & "66;border-radius:8px}"
+			    & ".rk{color:" & [Cor Texto Suave] & ";text-align:center}.gn{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+			    & ".r1{text-align:right}.mx{display:flex;height:8px;border-radius:99px;overflow:hidden;gap:2px}.mx i{display:block;height:100%}</style>"
+			RETURN
+			    IF (
+			        ISBLANK ( __Tot ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='hdr'><div><div class='ey'>Gêneros</div><div class='tt'>" & MAXX ( TOPN ( 1, __Tab, [@t], DESC ), dGenre[Genero] ) & " lidera o recorte · selo verde/vermelho = nota acima/abaixo da média (" & FORMAT ( __Avg, "0.00", "pt-BR" ) & ")</div></div>"
+			            & "<div class='lgd' style='display:flex;gap:14px;font-size:12px;color:" & [Cor Texto Suave] & "'><span><i class='dot' style='background:" & [Cor Primária] & "'></i> filmes</span>"
+			            & "<span><i class='dot' style='background:" & [Cor Secundária] & "'></i> séries</span></div></div>"
+			            & "<div class='gh'><span>#</span><span>Gênero</span><span>Títulos</span><span class='r1'>Qtd</span><span class='r1'>Part.</span><span class='r1'>IMDb</span><span>Filmes · Séries</span><span class='r1'>Horas</span></div>"
+			            & __Rows & "</div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: ddd95e49-ac80-493c-93c7-44417cef3eaa
+
+	/// Cabeçalho da página Plataformas com frase-insight (volume × qualidade).
+	measure 'Cabeçalho Plataformas HTML' =
+			VAR __P = FILTER ( ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@t", [Total de Títulos], "@i", [IMDb Médio] ), [@t] > 0 )
+			VAR __V = TOPN ( 1, __P, [@t], DESC )
+			VAR __Q = TOPN ( 1, FILTER ( __P, [@t] >= 100 ), [@i], DESC )
+			VAR __S =
+			    IF (
+			        COUNTROWS ( __P ) = 0, "Nenhum título no recorte atual.",
+			        "<b>" & MAXX ( __V, dPlatform[Platform] ) & "</b> lidera em volume (" & FORMAT ( DIVIDE ( MAXX ( __V, [@t] ), [Total de Títulos] ), "0%", "pt-BR" ) & ")"
+			            & IF ( NOT ISEMPTY ( __Q ), "; <b>" & MAXX ( __Q, dPlatform[Platform] ) & "</b> lidera em nota (IMDb " & FORMAT ( MAXX ( __Q, [@i] ), "0.0", "pt-BR" ) & ")", "" )
+			            & ". Clique em um cartão para filtrar a página."
+			    )
+			RETURN
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( [Cabeçalho Base HTML], "%EY%", "02 · Plataformas" ), "%T%", "Quem domina o catálogo — e com que qualidade" ), "%S%", __S )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 70e9e1d0-463f-434a-994f-c0f0f1a3482d
+
+	/// Cartão por plataforma (uma linha por plataforma via Granularity; clique filtra a página).
+	measure 'Plataforma Card HTML' =
+			VAR __C = [Cor Plataforma]
+			VAR __T = [Total de Títulos]
+			VAR __All = CALCULATE ( [Total de Títulos], ALLSELECTED ( dPlatform ) )
+			VAR __Max = MAXX ( ALLSELECTED ( dPlatform[Platform] ), [Total de Títulos] )
+			VAR __Rk = RANKX ( ALLSELECTED ( dPlatform[Platform] ), [Total de Títulos],, DESC )
+			VAR __Css =
+			    "<style>.pc{height:100vh;border-radius:16px;padding:14px 14px 12px;position:relative;overflow:hidden;cursor:pointer;"
+			    & "background:linear-gradient(170deg," & [Cor Fundo Card Elevado] & " 0%," & [Cor Fundo Card] & " 70%);border:1px solid " & [Cor Trilho] & ";transition:transform .15s,border-color .15s}"
+			    & ".pc:hover{transform:translateY(-3px)}"
+			    & ".pg{position:absolute;right:-40px;top:-50px;width:130px;height:130px;border-radius:50%;filter:blur(42px);opacity:.38}"
+			    & ".pt{position:relative;display:flex;justify-content:space-between;font-size:12px;color:" & [Cor Texto Suave] & "}"
+			    & ".pn{position:relative;font-size:16px;font-weight:800;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}"
+			    & ".pv{position:relative;font-size:26px;font-weight:700;margin-top:4px;letter-spacing:-.02em}"
+			    & ".pf{position:relative;display:flex;justify-content:space-between;font-size:12px;color:" & [Cor Texto Suave] & ";margin-top:9px}.pf b{color:" & [Cor Texto] & "}"
+			    & ".pc .bar{position:relative;margin-top:8px;height:6px}</style>"
+			RETURN
+			    IF (
+			        ISBLANK ( __T ), BLANK (),
+			        [CSS Base HTML] & __Css
+			            & "<div class='pc' style='border-top:2px solid " & __C & "'><div class='pg' style='background:" & __C & "'></div>"
+			            & "<div class='pt'><span>#" & __Rk & "</span><span class='nm'>" & FORMAT ( DIVIDE ( __T, __All ), "0.0%", "pt-BR" ) & "</span></div>"
+			            & "<div class='pn' style='color:" & __C & "'>" & [Plataforma Rótulo] & "</div>"
+			            & "<div class='pv nm'>" & FORMAT ( __T, "#,0", "pt-BR" ) & "</div>"
+			            & "<div class='bar'><i style='width:" & INT ( DIVIDE ( __T, __Max ) * 100 ) & "%;background:" & __C & "'></i></div>"
+			            & "<div class='pf'><span>IMDb <b>" & FORMAT ( [IMDb Médio], "0.0", "pt-BR" ) & "</b></span><span><b>"
+			            & FORMAT ( [Horas Assistidas (Mi)] / 1000, "#,0", "pt-BR" ) & "</b> bi h</span></div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: ab47ab18-d668-4a5a-bb54-039fe875d2b4
+
+	/// Matriz plataforma × gênero com índice de especialização (participação do gênero na plataforma ÷ no recorte sem filtro de plataforma).
+	measure 'Plataformas Heatmap HTML' =
+			VAR __TotAll = CALCULATE ( [Total de Títulos], REMOVEFILTERS ( dPlatform ) )
+			VAR __G =
+			    TOPN (
+			        9,
+			        ADDCOLUMNS ( VALUES ( dGenre[Genero] ), "@g", CALCULATE ( [Total de Títulos], REMOVEFILTERS ( dPlatform ) ) ),
+			        [@g], DESC, dGenre[Genero], ASC
+			    )
+			VAR __P = FILTER ( ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@t", [Total de Títulos], "@c", [Cor Plataforma] ), [@t] > 0 )
+			VAR __NP = COUNTROWS ( __P )
+			VAR __Head = CONCATENATEX ( __G, "<div class='hc'>" & dGenre[Genero] & "</div>", "", [@g], DESC, dGenre[Genero], ASC ) & "<div class='hc'>Outros</div>"
+			VAR __Rows =
+			    CONCATENATEX (
+			        __P,
+			        VAR __Pt = [@t]
+			        VAR __Pn = dPlatform[Platform]
+			        VAR __RkP = RANKX ( __P, [@t],, DESC )
+			        VAR __Cells =
+			            CONCATENATEX (
+			                __G,
+			                VAR __N = CALCULATE ( [Total de Títulos] ) + 0
+			                VAR __Idx = DIVIDE ( DIVIDE ( __N, __Pt ), DIVIDE ( [@g], __TotAll ) )
+			                VAR __Op = MIN ( ABS ( __Idx - 1 ) / 0.5, 1 ) * 0.85
+			                VAR __Col = IF ( __Idx >= 1.15, [Cor Secundária], IF ( __Idx <= 0.85, [Cor Acento], "" ) )
+			                VAR __Ti = IF ( __RkP <= 3, " dn", "" ) & IF ( RANKX ( __G, [@g],, DESC, DENSE ) >= 7, " lf", "" )
+			                RETURN
+			                    "<div class='hm tip'>"
+			                        & IF ( __Col <> "", "<i style='background:" & __Col & ";opacity:" & FORMAT ( __Op, "0.00", "en-US" ) & "'></i>" )
+			                        & "<b class='nm'>" & FORMAT ( __N, "#,0", "pt-BR" ) & "</b><small class='nm'>" & FORMAT ( __Idx, "0.00", "pt-BR" ) & "×</small>"
+			                        & "<div class='tp" & __Ti & "'><b>" & __Pn & " · " & dGenre[Genero] & "</b><br>" & FORMAT ( __N, "#,0", "pt-BR" ) & " títulos · "
+			                        & FORMAT ( DIVIDE ( __N, __Pt ), "0.0%", "pt-BR" ) & " da plataforma<br>No recorte geral: " & FORMAT ( DIVIDE ( [@g], __TotAll ), "0.0%", "pt-BR" )
+			                        & " · índice <b>" & FORMAT ( __Idx, "0.00", "pt-BR" ) & "×</b></div></div>",
+			                "",
+			                [@g], DESC, dGenre[Genero], ASC
+			            )
+			        VAR __Out = __Pt - SUMX ( __G, CALCULATE ( [Total de Títulos] ) + 0 )
+			        RETURN
+			            "<div class='hr'><div class='hp'><i class='dot' style='background:" & [@c] & "'></i><span>" & [Plataforma Rótulo] & "</span><small class='nm'>"
+			                & FORMAT ( __Pt, "#,0", "pt-BR" ) & "</small></div>" & __Cells
+			                & "<div class='hm ou'><b class='nm'>" & FORMAT ( __Out, "#,0", "pt-BR" ) & "</b><small class='nm'>" & FORMAT ( DIVIDE ( __Out, __Pt ), "0%", "pt-BR" ) & "</small></div></div>",
+			        "",
+			        [@t], DESC
+			    )
+			VAR __Grid = "display:grid;grid-template-columns:150px repeat(10,minmax(0,1fr));gap:5px"
+			VAR __Css =
+			    "<style>.hh{" & __Grid & ";margin-top:16px;margin-bottom:6px}.hc{font-size:12px;color:" & [Cor Texto Suave] & ";text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+			    & ".hr{" & __Grid & ";height:" & IF ( __NP >= 8, "50", "58" ) & "px;margin-bottom:5px}"
+			    & ".hp{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;min-width:0}.hp span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.hp small{color:" & [Cor Texto Suave] & ";font-weight:400;font-size:12px}"
+			    & ".hm{position:relative;border-radius:8px;background:" & [Cor Trilho] & "80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}"
+			    & ".hm>i{position:absolute;inset:0;border-radius:8px}.hm b,.hm small{position:relative}.hm b{font-size:13px}.hm small{font-size:12px;color:" & [Cor Texto] & "B3}"
+			    & ".hm:hover{outline:1px solid " & [Cor Destaque Suave] & "}.hm.ou{background:transparent;border:1px dashed " & [Cor Trilho] & "}"
+			    & ".lg2{display:flex;gap:18px;align-items:center;font-size:12px;color:" & [Cor Texto Suave] & ";margin-top:12px}.lg2 i{display:inline-block;width:14px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}</style>"
+			RETURN
+			    IF (
+			        __NP = 0,
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Especialização por gênero</div><div class='tt'>Onde cada plataforma concentra o catálogo</div>"
+			            & "<div class='sb'>Número = títulos · índice = participação do gênero na plataforma ÷ participação no recorte geral</div>"
+			            & "<div class='hh'><div class='hc' style='text-align:left'>Plataforma</div>" & __Head & "</div>" & __Rows
+			            & "<div class='lg2'><span><i style='background:" & [Cor Secundária] & "'></i>sobre-representado (≥ 1,15×)</span>"
+			            & "<span><i style='background:" & [Cor Acento] & "'></i>sub-representado (≤ 0,85×)</span><span>quanto mais forte a cor, maior o desvio</span></div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 9b0d3ba8-b5f2-4afb-bb0f-64bffaa536fb
+
+	/// Nota do público (IMDb) e da crítica (Rotten Tomatoes) por plataforma, em trilhos com escala única e marca da média.
+	measure 'Plataformas Qualidade HTML' =
+			VAR __P = FILTER ( ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@t", [Total de Títulos], "@i", [IMDb Médio], "@r", [Rotten Tomatoes Médio], "@c", [Cor Plataforma] ), [@t] > 0 )
+			VAR __I0 = MINX ( __P, [@i] ) - 0.05
+			VAR __I1 = MAX ( MAXX ( __P, [@i] ) + 0.05, __I0 + 0.3 )
+			VAR __R0 = MINX ( __P, [@r] ) - 0.5
+			VAR __R1 = MAX ( MAXX ( __P, [@r] ) + 0.5, __R0 + 3 )
+			VAR __AI = [IMDb Médio]
+			VAR __AR = [Rotten Tomatoes Médio]
+			VAR __PI = FORMAT ( DIVIDE ( __AI - __I0, __I1 - __I0 ) * 100, "0.0", "en-US" )
+			VAR __PR = FORMAT ( DIVIDE ( __AR - __R0, __R1 - __R0 ) * 100, "0.0", "en-US" )
+			VAR __Rows =
+			    CONCATENATEX (
+			        __P,
+			        VAR __Rk = RANKX ( __P, [@i],, DESC )
+			        RETURN
+			            "<div class='qr'><span class='qn'><i class='dot' style='background:" & [@c] & "'></i>" & [Plataforma Rótulo] & "</span>"
+			                & "<div class='tk tip'><em style='left:" & __PI & "%'></em><i style='left:" & FORMAT ( DIVIDE ( [@i] - __I0, __I1 - __I0 ) * 100, "0.0", "en-US" ) & "%;background:" & [@c] & "'></i>"
+			                & "<div class='tp" & IF ( __Rk <= 2, " dn", "" ) & "'><b>" & dPlatform[Platform] & "</b><br>IMDb " & FORMAT ( [@i], "0.00", "pt-BR" ) & " · RT " & FORMAT ( [@r], "0.0", "pt-BR" ) & "%<br>" & FORMAT ( [@t], "#,0", "pt-BR" ) & " títulos</div></div>"
+			                & "<span class='qv nm'>" & FORMAT ( [@i], "0.00", "pt-BR" ) & "</span>"
+			                & "<div class='tk'><em style='left:" & __PR & "%'></em><i style='left:" & FORMAT ( DIVIDE ( [@r] - __R0, __R1 - __R0 ) * 100, "0.0", "en-US" ) & "%;background:" & [@c] & "'></i></div>"
+			                & "<span class='qv nm'>" & FORMAT ( [@r], "0.0", "pt-BR" ) & "</span></div>",
+			        "",
+			        [@i], DESC
+			    )
+			VAR __G = "display:grid;grid-template-columns:104px 1fr 40px 1fr 36px;gap:10px;align-items:center"
+			VAR __Css =
+			    "<style>.qh{" & __G & ";font-size:12px;color:" & [Cor Texto Suave] & ";margin:12px 0 2px}.qr{" & __G & ";height:24px;font-size:12px}"
+			    & ".qn{display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;font-weight:600}"
+			    & ".tk{position:relative;height:16px}.tk:before{content:'';position:absolute;left:0;right:0;top:7px;height:2px;border-radius:2px;background:" & [Cor Trilho] & "}"
+			    & ".tk em{position:absolute;top:1px;width:2px;height:14px;background:" & [Cor Texto Suave] & "80}"
+			    & ".tk i{position:absolute;top:2px;width:12px;height:12px;border-radius:50%;margin-left:-6px;box-shadow:0 0 0 3px " & [Cor Fundo Card] & "}"
+			    & ".qv{text-align:right;font-weight:600}</style>"
+			RETURN
+			    IF (
+			        ISEMPTY ( __P ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Qualidade percebida</div><div class='tt'>Nota do público × nota da crítica</div>"
+			            & "<div class='qh'><span></span><span>IMDb (público)</span><span></span><span>Rotten Tomatoes (crítica)</span><span></span></div><div class='sb' style='margin:0 0 4px'>Traço vertical = média do recorte (IMDb " & FORMAT ( __AI, "0.00", "pt-BR" ) & " · RT " & FORMAT ( __AR, "0.0", "pt-BR" ) & "%)</div>"
+			            & __Rows & "</div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 93153eea-9fea-4e26-8235-f880cfc133fa
+
+	/// Mix filme × série e defasagem média entre lançamento e entrada no catálogo, por plataforma.
+	measure 'Plataformas Formato HTML' =
+			VAR __P =
+			    FILTER (
+			        ADDCOLUMNS (
+			            VALUES ( dPlatform[Platform] ),
+			            "@t", [Total de Títulos],
+			            "@f", [Total de Filmes] + 0,
+			            "@c", [Cor Plataforma],
+			            "@d", [Idade Média (anos)]
+			        ),
+			        [@t] > 0
+			    )
+			VAR __Rows =
+			    CONCATENATEX (
+			        __P,
+			        VAR __Pf = DIVIDE ( [@f], [@t] )
+			        VAR __W = INT ( __Pf * 100 )
+			        RETURN
+			            "<div class='fr'><span class='qn'><i class='dot' style='background:" & [@c] & "'></i>" & [Plataforma Rótulo] & "</span>"
+			                & "<div class='mx'><i style='width:" & __W & "%;background:" & [Cor Primária] & "'><b>" & FORMAT ( __Pf, "0%", "pt-BR" ) & "</b></i>"
+			                & "<i style='width:" & 100 - __W & "%;background:" & [Cor Secundária] & "'><b>" & FORMAT ( 1 - __Pf, "0%", "pt-BR" ) & "</b></i></div>"
+			                & "<span class='qv nm'>" & FORMAT ( [@d], "0.0", "pt-BR" ) & " a</span></div>",
+			        "",
+			        [@f] / [@t], DESC
+			    )
+			VAR __G = "display:grid;grid-template-columns:104px 1fr 48px;gap:10px;align-items:center"
+			VAR __Css =
+			    "<style>.fh{" & __G & ";font-size:12px;color:" & [Cor Texto Suave] & ";margin:12px 0 4px}.fr{" & __G & ";height:24px;font-size:12px}"
+			    & ".qn{display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;font-weight:600}.qv{text-align:right;font-weight:600}"
+			    & ".mx{display:flex;height:18px;border-radius:6px;overflow:hidden;gap:2px}.mx i{display:flex;align-items:center;font-style:normal;padding:0 6px;min-width:0;transform-origin:left;animation:gx .8s ease-out both}"
+			    & ".mx b{font-size:12px;font-weight:700;color:" & [Cor Fundo Página] & ";white-space:nowrap}.mx i+i{justify-content:flex-end}</style>"
+			RETURN
+			    IF (
+			        ISEMPTY ( __P ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Formato</div><div class='tt'>Mix filme × série e idade média do catálogo</div>"
+			            & "<div class='fh'><span></span><span><i class='dot' style='background:" & [Cor Primária] & "'></i> filmes &nbsp; <i class='dot' style='background:" & [Cor Secundária] & "'></i> séries</span><span style='text-align:right'>idade</span></div>"
+			            & __Rows & "</div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: ae761306-994f-4e2d-9324-821f0b16fb24
+
+	/// Cabeçalho da página Qualidade & Eficiência com frase-insight.
+	measure 'Cabeçalho Eficiência HTML' =
+			VAR __TabG = FILTER ( ADDCOLUMNS ( VALUES ( dGenre[Genero] ), "@e", [Horas por US$ Mi], "@n", [Total de Filmes] ), NOT ISBLANK ( [@e] ) && [@n] >= 30 )
+			VAR __B = TOPN ( 1, __TabG, [@e], DESC )
+			VAR __Avg = [Horas por US$ Mi]
+			VAR __S =
+			    IF (
+			        ISEMPTY ( __TabG ), "Sem filmes com orçamento no recorte — eficiência só existe para filmes.",
+			        "<b>" & MAXX ( __B, dGenre[Genero] ) & "</b> entrega <b>" & FORMAT ( MAXX ( __B, [@e] ), "0.0", "pt-BR" ) & " h</b> assistidas por US$ investido; a média do recorte é <b>"
+			            & FORMAT ( __Avg, "0.0", "pt-BR" ) & " h</b>. Clique em um gênero para filtrar."
+			    )
+			RETURN
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( [Cabeçalho Base HTML], "%EY%", "03 · Qualidade & Eficiência" ), "%T%", "Onde o orçamento vira audiência" ), "%S%", __S )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 084fd8a3-b46b-40f9-9973-241654f85bff
+
+	/// Cabeçalho do ranking de eficiência por gênero.
+	measure 'Eficiência Lista Topo HTML' =
+			VAR __Avg = CALCULATE ( [Horas por US$ Mi], ALLSELECTED ( dGenre ) )
+			RETURN
+			    [CSS Base HTML]
+			        & "<div class='cd' style='padding:16px 20px'><div class='hdr'><div><div class='ey'>Ranking de eficiência</div>"
+			        & "<div class='tt'>Horas assistidas por US$ investido</div></div>"
+			        & "<span class='chip pri nm'>média " & IF ( ISBLANK ( __Avg ), "—", FORMAT ( __Avg, "0.0", "pt-BR" ) & " h" ) & "</span></div>"
+			        & "<div class='sb'>Só filmes têm orçamento · barra em escala única · traço = média</div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: 09169e5e-2e5e-46e2-8672-6b43e675dbc8
+
+	/// Linha do ranking de eficiência por gênero (Granularity = gênero; clique filtra a página).
+	measure 'Eficiência Gênero Linha HTML' =
+			VAR __E = [Horas por US$ Mi]
+			VAR __Max = MAXX ( ALLSELECTED ( dGenre[Genero] ), [Horas por US$ Mi] )
+			VAR __Avg = CALCULATE ( [Horas por US$ Mi], ALLSELECTED ( dGenre ) )
+			VAR __Rk = IF ( NOT ISBLANK ( __E ), RANKX ( FILTER ( ALLSELECTED ( dGenre[Genero] ), NOT ISBLANK ( [Horas por US$ Mi] ) ), [Horas por US$ Mi],, DESC ) )
+			VAR __Col = IF ( __E >= __Avg, [Cor Positiva], [Cor Primária] )
+			VAR __Css =
+			    "<style>.er{height:32px;border-radius:10px;display:grid;grid-template-columns:26px 112px 1fr 58px 78px;gap:10px;align-items:center;padding:0 12px;font-size:13px;"
+			    & "background:" & [Cor Fundo Card] & ";border:1px solid " & [Cor Trilho] & ";cursor:pointer}.er:hover{border-color:" & [Cor Primária] & "}"
+			    & ".er .rk{font-size:12px;color:" & [Cor Texto Suave] & ";text-align:center}.er .gn{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+			    & ".tr{position:relative}.tr em{position:absolute;top:-4px;width:2px;height:16px;background:" & [Cor Texto] & "99}"
+			    & ".ev{text-align:right;font-weight:700}.eb{text-align:right;font-size:12px;color:" & [Cor Texto Suave] & "}</style>"
+			RETURN
+			    [CSS Base HTML] & __Css
+			        & IF (
+			            ISBLANK ( __E ),
+			            "<div class='er' style='opacity:.6'><span class='rk'>–</span><span class='gn'>" & SELECTEDVALUE ( dGenre[Genero] ) & "</span><span class='mut' style='grid-column:span 3;font-size:12px'>sem orçamento no recorte (séries)</span></div>",
+			            "<div class='er'><span class='rk nm'>" & __Rk & "</span><span class='gn'>" & SELECTEDVALUE ( dGenre[Genero] ) & "</span>"
+			                & "<div class='tr'><div class='bar'><i style='width:" & INT ( DIVIDE ( __E, __Max ) * 100 ) & "%;background:" & __Col & "'></i></div>"
+			                & "<em style='left:" & FORMAT ( DIVIDE ( __Avg, __Max ) * 100, "0.0", "en-US" ) & "%'></em></div>"
+			                & "<span class='ev nm' style='color:" & __Col & "'>" & FORMAT ( __E, "0.0", "pt-BR" ) & " h</span>"
+			                & "<span class='eb nm'>US$ " & FORMAT ( [Orçamento Médio (US$ Mi)], "0.0", "pt-BR" ) & " mi</span></div>"
+			        )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 131b1d23-3f21-4548-b0d4-715ecd28b67c
+
+	/// Retorno por faixa de orçamento: horas médias por filme (colunas) e horas por US$ (chips), mostrando o retorno decrescente.
+	measure 'Eficiência Faixas HTML' =
+			VAR __Faixas =
+			    DATATABLE (
+			        "Ordem", INTEGER, "Rotulo", STRING, "Min", DOUBLE, "Max", DOUBLE,
+			        {
+			            { 1, "até 5", 0, 5 },
+			            { 2, "5–10", 5, 10 },
+			            { 3, "10–20", 10, 20 },
+			            { 4, "20–40", 20, 40 },
+			            { 5, "40–80", 40, 80 },
+			            { 6, "80–160", 80, 160 },
+			            { 7, "160+", 160, 100000 }
+			        }
+			    )
+			VAR __T =
+			    ADDCOLUMNS (
+			        __Faixas,
+			        "@n",
+			            VAR __A = [Min] VAR __B = [Max]
+			            RETURN CALCULATE ( [Total de Títulos], KEEPFILTERS ( fStreamingCatalog[budget_million_usd] > __A && fStreamingCatalog[budget_million_usd] <= __B ) ) + 0,
+			        "@h",
+			            VAR __A = [Min] VAR __B = [Max]
+			            RETURN CALCULATE ( [Horas Médias por Título (Mi)], KEEPFILTERS ( fStreamingCatalog[budget_million_usd] > __A && fStreamingCatalog[budget_million_usd] <= __B ) ),
+			        "@e",
+			            VAR __A = [Min] VAR __B = [Max]
+			            RETURN CALCULATE ( DIVIDE ( [Horas Assistidas (Mi)], [Orçamento Total (US$ Mi)] ), KEEPFILTERS ( fStreamingCatalog[budget_million_usd] > __A && fStreamingCatalog[budget_million_usd] <= __B ) ),
+			        "@i",
+			            VAR __A = [Min] VAR __B = [Max]
+			            RETURN CALCULATE ( [IMDb Médio], KEEPFILTERS ( fStreamingCatalog[budget_million_usd] > __A && fStreamingCatalog[budget_million_usd] <= __B ) )
+			    )
+			VAR __HMax = MAXX ( __T, [@h] )
+			VAR __EMax = MAXX ( __T, [@e] )
+			VAR __Nf = SUMX ( __T, [@n] )
+			VAR __Lo = MAXX ( FILTER ( __T, [Ordem] = 1 ), [@e] )
+			VAR __Hi = MAXX ( FILTER ( __T, [Ordem] = 7 ), [@e] )
+			VAR __Cols =
+			    CONCATENATEX (
+			        __T,
+			        VAR __Tone = DIVIDE ( [@e], __EMax )
+			        RETURN
+			            "<div class='fx tip'><span class='hv nm'>" & IF ( [@n] > 0, FORMAT ( [@h], "#,0", "pt-BR" ) & " mi h", "—" ) & "</span>"
+			                & "<div class='fc' style='height:" & FORMAT ( DIVIDE ( [@h], __HMax ) * 100, "0.0", "en-US" ) & "%;animation-delay:" & FORMAT ( [Ordem] * 0.06, "0.00", "en-US" ) & "s'></div>"
+			                & "<div class='tp" & IF ( [Ordem] >= 6, " lf", IF ( [Ordem] <= 1, " rt", "" ) ) & "'><b>US$ " & [Rotulo] & " mi</b><br>" & FORMAT ( [@n], "#,0", "pt-BR" ) & " filmes · IMDb "
+			                & FORMAT ( [@i], "0.0", "pt-BR" ) & "<br>" & FORMAT ( [@h], "#,0.0", "pt-BR" ) & " mi h por filme · <b>" & FORMAT ( [@e], "0.00", "pt-BR" ) & " h por US$</b></div></div>",
+			        "",
+			        [Ordem], ASC
+			    )
+			VAR __Foot =
+			    CONCATENATEX (
+			        __T,
+			        VAR __Hot = [@e] >= DIVIDE ( __EMax, 4 )
+			        RETURN
+			            "<div class='ff'><span class='chip " & IF ( __Hot, "pos", "neg" ) & " nm'>" & IF ( [@n] > 0, FORMAT ( [@e], "0.0", "pt-BR" ) & " h/US$", "—" ) & "</span>"
+			                & "<div class='fl'>US$ " & [Rotulo] & " mi</div><div class='fn nm'>" & FORMAT ( [@n], "#,0", "pt-BR" ) & " filmes</div></div>",
+			        "",
+			        [Ordem], ASC
+			    )
+			VAR __Css =
+			    "<style>.fg{position:absolute;left:24px;right:24px;top:120px;bottom:118px;display:flex;align-items:flex-end;gap:18px;border-bottom:1px solid " & [Cor Trilho] & "}"
+			    & ".fx{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch}"
+			    & ".hv{font-size:13px;font-weight:700;text-align:center;margin-bottom:6px}"
+			    & ".fc{border-radius:8px 8px 2px 2px;background:linear-gradient(180deg," & [Cor Primária] & " 0%," & [Cor Primária Escura] & " 100%);transform-origin:bottom;animation:gy .8s cubic-bezier(.2,.7,.2,1) both}"
+			    & ".fx:hover .fc{filter:brightness(1.3)}"
+			    & ".fb{position:absolute;left:24px;right:24px;bottom:18px;display:flex;gap:18px}.ff{flex:1;text-align:center}"
+			    & ".fl{font-size:12px;color:" & [Cor Texto] & ";margin-top:8px;font-weight:600}.fn{font-size:12px;color:" & [Cor Texto Suave] & ";margin-top:2px}</style>"
+			RETURN
+			    IF (
+			        __Nf = 0,
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Sem filmes com orçamento no recorte atual.<br>Selecione o tipo Filme ou limpe os filtros.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Retorno por faixa de orçamento</div>"
+			            & "<div class='tt'>"
+			            & IF ( NOT ISBLANK ( __Lo ) && NOT ISBLANK ( __Hi ) && __Hi > 0,
+			                "Cada US$ rende " & FORMAT ( __Lo, "0.0", "pt-BR" ) & " h em filmes de até US$ 5 mi e " & FORMAT ( __Hi, "0.0", "pt-BR" ) & " h acima de US$ 160 mi — retorno "
+			                    & FORMAT ( DIVIDE ( __Lo, __Hi ), "0", "pt-BR" ) & "× menor",
+			                "Horas médias por filme e horas por US$ em cada faixa de orçamento" )
+			            & "</div><div class='sb'>Colunas = horas médias por filme · selos = horas assistidas por US$ investido (verde = ao menos ¼ do retorno da melhor faixa)</div>"
+			            & "<div class='fg'>" & __Cols & "</div><div class='fb'>" & __Foot & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 4168ed5c-6198-4196-93a2-ef77f2b5d380
+
+	/// Títulos com IMDb ≥ 8 e audiência abaixo da mediana do recorte: oportunidades de destaque na vitrine.
+	measure 'Joias Escondidas HTML' =
+			VAR __Med = MEDIANX ( fStreamingCatalog, fStreamingCatalog[hours_watched_million] )
+			VAR __Base = FILTER ( fStreamingCatalog, fStreamingCatalog[imdb_rating] >= 8 && fStreamingCatalog[hours_watched_million] <= __Med )
+			VAR __N = COUNTROWS ( __Base )
+			VAR __Top = TOPN ( 8, __Base, fStreamingCatalog[imdb_rating], DESC, fStreamingCatalog[imdb_votes], DESC, fStreamingCatalog[show_id], ASC )
+			VAR __Rows =
+			    CONCATENATEX (
+			        __Top,
+			        VAR __Ti = SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( fStreamingCatalog[title], "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" )
+			        RETURN
+			            "<tr><td class='tn'>" & __Ti & "</td>"
+			                & "<td><span class='pl'><i class='dot' style='background:" & [Cor Plataforma] & "'></i>" & [Plataforma Rótulo] & "</span></td>"
+			                & "<td class='mut'>" & fStreamingCatalog[primary_genre] & " · " & IF ( fStreamingCatalog[type] = "Movie", "Filme", "Série" ) & " · " & fStreamingCatalog[release_year] & "</td>"
+			                & "<td class='n'><span class='chip pos nm'>" & FORMAT ( fStreamingCatalog[imdb_rating], "0.0", "pt-BR" ) & "</span></td>"
+			                & "<td class='n nm'>" & FORMAT ( fStreamingCatalog[rotten_tomatoes_score], "0", "pt-BR" ) & "%</td>"
+			                & "<td class='n nm'>" & FORMAT ( fStreamingCatalog[imdb_votes], "#,0", "pt-BR" ) & "</td>"
+			                & "<td class='n nm'>" & FORMAT ( fStreamingCatalog[hours_watched_million], "#,0.0", "pt-BR" ) & " mi</td></tr>",
+			        "",
+			        fStreamingCatalog[imdb_rating], DESC,
+			        fStreamingCatalog[imdb_votes], DESC,
+			        fStreamingCatalog[show_id], ASC
+			    )
+			VAR __Css =
+			    "<style>table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}th{text-align:left;font-size:12px;font-weight:600;color:" & [Cor Texto Suave] & ";text-transform:uppercase;letter-spacing:.06em;padding:0 8px 8px;border-bottom:1px solid " & [Cor Trilho] & "}"
+			    & "td{padding:0 8px;height:31px;border-bottom:1px solid " & [Cor Trilho] & "66;white-space:nowrap}tr:hover td{background:" & [Cor Trilho] & "66}"
+			    & ".tn{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis}.n,th.n{text-align:right}.pl{display:inline-flex;align-items:center;gap:6px}</style>"
+			RETURN
+			    IF (
+			        __N = 0,
+			        [CSS Base HTML] & "<div class='cd'><div class='ey'>Joias escondidas</div><div class='vazio' style='height:280px'>Nenhum título com IMDb ≥ 8 abaixo da mediana de audiência neste recorte.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='hdr'><div><div class='ey'>Joias escondidas</div>"
+			            & "<div class='tt'>" & FORMAT ( __N, "#,0", "pt-BR" ) & " títulos com IMDb ≥ 8 têm audiência abaixo da mediana (" & FORMAT ( __Med, "#,0.0", "pt-BR" ) & " mi h)</div></div>"
+			            & "<span class='chip pri'>oportunidade de vitrine</span></div>"
+			            & "<table><tr><th>Título</th><th>Plataforma</th><th>Gênero · tipo · ano</th><th class='n'>IMDb</th><th class='n'>RT</th><th class='n'>Votos</th><th class='n'>Horas</th></tr>"
+			            & __Rows & "</table></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: f9c42aa0-0318-4933-917c-ab6a1f1d5378
+
+	/// Cabeçalho do Mapa Global com frase-insight.
+	measure 'Cabeçalho Global HTML' =
+			VAR __C = FILTER ( ADDCOLUMNS ( VALUES ( dCountry[Pais] ), "@t", [Total de Títulos] ), [@t] > 0 )
+			VAR __Fora = FILTER ( __C, dCountry[Pais] <> "United States" )
+			VAR __T2 = TOPN ( 1, __Fora, [@t], DESC )
+			VAR __S =
+			    IF (
+			        ISEMPTY ( __C ), "Nenhum título no recorte atual.",
+			        "<b>" & FORMAT ( [% Títulos Fora dos EUA], "0%", "pt-BR" ) & "</b> do recorte é produzido fora dos EUA"
+			            & IF ( NOT ISEMPTY ( __T2 ), "; <b>" & MAXX ( __T2, CALCULATE ( [País Nome] ) ) & "</b> é o maior polo internacional (" & FORMAT ( MAXX ( __T2, [@t] ), "#,0", "pt-BR" ) & " títulos)", "" )
+			            & ". Clique em um país no ranking para filtrar."
+			    )
+			RETURN
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( [Cabeçalho Base HTML], "%EY%", "04 · Mapa Global" ), "%T%", "De onde vem o conteúdo" ), "%S%", __S )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 1f1684e9-9ea9-4a5c-b5bb-ecaff928bcc8
+
+	/// Cartograma em blocos: um bloco por país na posição geográfica aproximada, intensidade = participação no recorte.
+	measure 'Global Mapa HTML' =
+			VAR __Map =
+			    DATATABLE (
+			        "Pais", STRING, "Iso", STRING, "Nome", STRING, "Col", INTEGER, "Lin", INTEGER,
+			        {
+			            { "Canada", "CA", "Canadá", 3, 2 }, { "United States", "US", "Estados Unidos", 3, 3 }, { "Mexico", "MX", "México", 3, 4 },
+			            { "Brazil", "BR", "Brasil", 5, 6 }, { "Argentina", "AR", "Argentina", 5, 7 },
+			            { "United Kingdom", "GB", "Reino Unido", 8, 2 }, { "Sweden", "SE", "Suécia", 10, 1 }, { "Denmark", "DK", "Dinamarca", 9, 2 },
+			            { "France", "FR", "França", 8, 3 }, { "Germany", "DE", "Alemanha", 9, 3 }, { "Spain", "ES", "Espanha", 7, 4 },
+			            { "Italy", "IT", "Itália", 9, 4 }, { "Turkey", "TR", "Turquia", 11, 3 }, { "Israel", "IL", "Israel", 11, 4 },
+			            { "Egypt", "EG", "Egito", 10, 5 }, { "Nigeria", "NG", "Nigéria", 9, 6 },
+			            { "India", "IN", "Índia", 13, 5 }, { "China", "CN", "China", 14, 3 }, { "South Korea", "KR", "Coreia do Sul", 16, 3 },
+			            { "Japan", "JP", "Japão", 17, 3 }, { "Thailand", "TH", "Tailândia", 14, 5 }, { "Philippines", "PH", "Filipinas", 16, 5 },
+			            { "Indonesia", "ID", "Indonésia", 15, 6 }, { "Australia", "AU", "Austrália", 17, 7 }
+			        }
+			    )
+			VAR __Sel = VALUES ( dCountry[Pais] )
+			VAR __Filtrado = ISFILTERED ( dCountry[Pais] )
+			VAR __T =
+			    ADDCOLUMNS (
+			        __Map,
+			        "@t", VAR __P = [Pais] RETURN CALCULATE ( [Total de Títulos], REMOVEFILTERS ( dCountry ), TREATAS ( { __P }, dCountry[Pais] ) ) + 0,
+			        "@i", VAR __P = [Pais] RETURN CALCULATE ( [IMDb Médio], REMOVEFILTERS ( dCountry ), TREATAS ( { __P }, dCountry[Pais] ) ),
+			        "@h", VAR __P = [Pais] RETURN CALCULATE ( [Horas Médias por Título (Mi)], REMOVEFILTERS ( dCountry ), TREATAS ( { __P }, dCountry[Pais] ) )
+			    )
+			VAR __All = SUMX ( __T, [@t] )
+			VAR __Max = MAXX ( __T, [@t] )
+			VAR __Tiles =
+			    CONCATENATEX (
+			        __T,
+			        VAR __Op = IF ( [@t] > 0, 0.14 + 0.86 * SQRT ( DIVIDE ( [@t], __Max ) ), 0 )
+			        VAR __On = __Filtrado && CONTAINSROW ( __Sel, [Pais] )
+			        VAR __Dim = __Filtrado && NOT __On
+			        VAR __Tp = IF ( [Lin] <= 2, " dn", "" ) & IF ( [Col] >= 15, " lf", IF ( [Col] <= 3, " rt", "" ) )
+			        RETURN
+			            "<div class='tc tip" & IF ( __On, " on", "" ) & IF ( __Dim, " dm", "" ) & "' style='grid-column:" & [Col] & ";grid-row:" & [Lin] & "'>"
+			                & "<i style='opacity:" & FORMAT ( __Op, "0.00", "en-US" ) & "'></i><b>" & [Iso] & "</b><small class='nm'>" & FORMAT ( [@t], "#,0", "pt-BR" ) & "</small>"
+			                & "<div class='tp" & __Tp & "'><b>" & [Nome] & "</b><br>" & FORMAT ( [@t], "#,0", "pt-BR" ) & " títulos · " & FORMAT ( DIVIDE ( [@t], __All ), "0.0%", "pt-BR" ) & " do recorte<br>"
+			                & "IMDb " & FORMAT ( [@i], "0.0", "pt-BR" ) & " · " & FORMAT ( [@h], "#,0.0", "pt-BR" ) & " mi h por título</div></div>",
+			        "",
+			        [Lin], ASC, [Col], ASC
+			    )
+			VAR __Top3 = CONCATENATEX ( TOPN ( 3, __T, [@t], DESC ), "<span><b>" & [Nome] & "</b> " & FORMAT ( DIVIDE ( [@t], __All ), "0%", "pt-BR" ) & "</span>", " · ", [@t], DESC )
+			VAR __Css =
+			    "<style>.tm{position:absolute;left:24px;right:24px;top:112px;display:grid;grid-template-columns:repeat(18,minmax(0,1fr));grid-template-rows:repeat(7,56px);gap:6px}"
+			    & ".tc{position:relative;border-radius:10px;background:" & [Cor Trilho] & "99;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid " & [Cor Trilho] & ";transition:transform .15s}"
+			    & ".tc>i{position:absolute;inset:0;border-radius:9px;background:linear-gradient(160deg," & [Cor Destaque Suave] & " 0%," & [Cor Primária] & " 100%)}"
+			    & ".tc b,.tc small{position:relative}.tc b{font-size:14px;font-weight:800;letter-spacing:.02em}.tc small{font-size:12px;color:" & [Cor Texto] & "D9}"
+			    & ".tc:hover{transform:scale(1.08);z-index:5}.tc.on{box-shadow:0 0 0 2px " & [Cor Secundária] & ",0 0 22px " & [Cor Secundária] & "66}.tc.dm{opacity:.35}"
+			    & ".rg2{position:absolute;font-size:12px;letter-spacing:.14em;color:" & [Cor Texto Suave] & ";font-weight:600}"
+			    & ".mf{position:absolute;left:24px;right:24px;bottom:18px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:" & [Cor Texto Suave] & "}.mf b{color:" & [Cor Texto] & "}"
+			    & ".sc{display:inline-block;width:120px;height:8px;border-radius:99px;vertical-align:middle;margin:0 8px;background:linear-gradient(90deg," & [Cor Primária] & "24," & [Cor Primária] & ")}</style>"
+			RETURN
+			    [CSS Base HTML] & __Css
+			        & "<div class='cd'><div class='hdr'><div><div class='ey'>Cartograma</div><div class='tt'>Participação de cada país de produção no recorte</div>"
+			        & "<div class='sb'>Cada bloco é um país, na posição geográfica aproximada · passe o mouse para detalhes</div></div>"
+			        & "<span class='chip pri nm'>" & COUNTROWS ( FILTER ( __T, [@t] > 0 ) ) & " países</span></div>"
+			        & "<div class='tm'>" & __Tiles & "</div>"
+			        & "<div class='rg2' style='left:40px;top:128px'>AMÉRICAS</div><div class='rg2' style='left:430px;top:128px'>EUROPA</div>"
+			        & "<div class='rg2' style='left:372px;top:456px'>ÁFRICA</div><div class='rg2' style='left:760px;top:190px'>ÁSIA</div><div class='rg2' style='left:812px;top:506px'>OCEANIA</div>"
+			        & "<div class='mf'><span>Maiores polos: " & __Top3 & "</span><span>menos<i class='sc'></i>mais títulos</span></div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: e490f1e9-36e9-4f9a-a013-e357c671acbc
+
+	/// Cabeçalho do ranking de países.
+	measure 'Global Ranking Topo HTML' =
+			[CSS Base HTML]
+			    & "<div class='cd' style='padding:16px 20px'><div class='hdr'><div><div class='ey'>Ranking de países</div><div class='tt'>Títulos por país de produção</div></div>"
+			    & "<span class='chip pri nm'>" & FORMAT ( [Total de Títulos], "#,0", "pt-BR" ) & " títulos</span></div>"
+			    & "<div class='sb'>Barra em escala única · clique para filtrar a página</div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: 15ccfca3-f586-4de3-bcde-5eac12238795
+
+	/// Linha do ranking por país (Granularity = país; clique filtra a página).
+	measure 'Global País Linha HTML' =
+			VAR __Iso =
+			    SWITCH (
+			        SELECTEDVALUE ( dCountry[Pais] ),
+			        "United States", "US", "India", "IN", "United Kingdom", "GB", "South Korea", "KR", "Japan", "JP", "Spain", "ES",
+			        "France", "FR", "Germany", "DE", "Canada", "CA", "Brazil", "BR", "Mexico", "MX", "Australia", "AU", "Turkey", "TR",
+			        "China", "CN", "Italy", "IT", "Argentina", "AR", "Nigeria", "NG", "Egypt", "EG", "Philippines", "PH", "Sweden", "SE",
+			        "Israel", "IL", "Thailand", "TH", "Denmark", "DK", "Indonesia", "ID", "··"
+			    )
+			VAR __T = [Total de Títulos]
+			VAR __Max = MAXX ( ALLSELECTED ( dCountry[Pais] ), [Total de Títulos] )
+			VAR __All = CALCULATE ( [Total de Títulos], ALLSELECTED ( dCountry ) )
+			VAR __Rk = RANKX ( ALLSELECTED ( dCountry[Pais] ), [Total de Títulos],, DESC )
+			VAR __Css =
+			    "<style>.cr{height:29px;border-radius:9px;display:grid;grid-template-columns:22px 30px 1fr 110px 52px 34px;gap:9px;align-items:center;padding:0 10px;font-size:12px;"
+			    & "background:" & [Cor Fundo Card] & ";border:1px solid " & [Cor Trilho] & ";cursor:pointer}.cr:hover{border-color:" & [Cor Primária] & "}"
+			    & ".cr .rk{color:" & [Cor Texto Suave] & ";text-align:center}.iso{font-size:12px;font-weight:800;border-radius:6px;text-align:center;padding:2px 0;background:" & [Cor Primária] & "2E;color:" & [Cor Destaque Suave] & "}"
+			    & ".cn{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cv2{text-align:right;font-weight:700}.ci{text-align:right;color:" & [Cor Texto Suave] & "}.cr .bar{height:6px}</style>"
+			RETURN
+			    IF (
+			        ISBLANK ( __T ), BLANK (),
+			        [CSS Base HTML] & __Css
+			            & "<div class='cr'><span class='rk nm'>" & __Rk & "</span><span class='iso'>" & __Iso & "</span><span class='cn'>" & [País Nome] & "</span>"
+			            & "<div class='bar'><i style='width:" & INT ( DIVIDE ( __T, __Max ) * 100 ) & "%;background:linear-gradient(90deg," & [Cor Primária] & "," & [Cor Destaque Suave] & ")'></i></div>"
+			            & "<span class='cv2 nm'>" & FORMAT ( __T, "#,0", "pt-BR" ) & "</span><span class='ci nm'>" & FORMAT ( DIVIDE ( __T, __All ), "0%", "pt-BR" ) & "</span></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 98586f3b-d070-4b19-832f-809a49a070fd
+
+	/// Distribuição do catálogo por idioma original (6 maiores + outros) em anel.
+	measure 'Global Idiomas HTML' =
+			VAR __Tot = [Total de Títulos]
+			VAR __L = TOPN ( 6, ADDCOLUMNS ( VALUES ( fStreamingCatalog[language] ), "@n", [Total de Títulos] ), [@n], DESC, fStreamingCatalog[language], ASC )
+			VAR __Lr = ADDCOLUMNS ( __L, "@r", RANKX ( __L, [@n],, DESC, DENSE ) )
+			VAR __Cor = "|1" & [Cor Primária] & "|2" & [Cor Secundária] & "|3" & [Cor Acento] & "|4" & [Cor Positiva] & "|5" & [Cor Alerta] & "|6" & [Cor Destaque Suave]
+			VAR __Seg =
+			    ADDCOLUMNS (
+			        __Lr,
+			        "@c", MID ( __Cor, SEARCH ( "|" & [@r], __Cor ) + 2, 7 ),
+			        "@a", DIVIDE ( SUMX ( FILTER ( __Lr, [@r] < EARLIER ( [@r] ) ), [@n] ) + 0, __Tot ) + 0,
+			        "@b", DIVIDE ( SUMX ( FILTER ( __Lr, [@r] <= EARLIER ( [@r] ) ), [@n] ), __Tot )
+			    )
+			VAR __Top = SUMX ( __Seg, [@n] )
+			VAR __Grad =
+			    CONCATENATEX ( __Seg, [@c] & " " & FORMAT ( [@a] * 100, "0.00", "en-US" ) & "% " & FORMAT ( [@b] * 100, "0.00", "en-US" ) & "%", ",", [@r], ASC )
+			        & "," & [Cor Neutra] & " " & FORMAT ( DIVIDE ( __Top, __Tot ) * 100, "0.00", "en-US" ) & "% 100%"
+			VAR __Leg =
+			    CONCATENATEX (
+			        __Seg,
+			        "<div class='li'><i class='dot' style='background:" & [@c] & "'></i><span>" & [Idioma Nome] & "</span><b class='nm'>" & FORMAT ( DIVIDE ( [@n], __Tot ), "0.0%", "pt-BR" ) & "</b></div>",
+			        "", [@r], ASC
+			    )
+			        & "<div class='li'><i class='dot' style='background:" & [Cor Neutra] & "'></i><span>Outros</span><b class='nm'>" & FORMAT ( 1 - DIVIDE ( __Top, __Tot ), "0.0%", "pt-BR" ) & "</b></div>"
+			VAR __En = DIVIDE ( CALCULATE ( [Total de Títulos], KEEPFILTERS ( fStreamingCatalog[language] = "English" ) ), __Tot )
+			VAR __Css =
+			    "<style>.dn2{position:absolute;left:24px;top:98px;width:176px;height:176px;border-radius:50%;background:conic-gradient(" & __Grad & ");display:grid;place-items:center}"
+			    & ".dn2>div{width:118px;height:118px;border-radius:50%;background:" & [Cor Fundo Card] & ";display:grid;place-items:center;text-align:center}"
+			    & ".dn2 b{font-size:24px;font-weight:800;display:block}.dn2 span{font-size:12px;color:" & [Cor Texto Suave] & "}"
+			    & ".lgl{position:absolute;left:228px;right:24px;top:100px}.li{display:grid;grid-template-columns:14px 1fr auto;align-items:center;height:24px;font-size:13px}.li b{font-weight:700}</style>"
+			RETURN
+			    IF (
+			        ISBLANK ( __Tot ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Idioma original</div><div class='tt'>" & FORMAT ( 1 - __En, "0%", "pt-BR" ) & " do recorte não é falado em inglês</div>"
+			            & "<div class='dn2'><div><div><b class='nm'>" & COUNTROWS ( VALUES ( fStreamingCatalog[language] ) ) & "</b><span>idiomas</span></div></div></div>"
+			            & "<div class='lgl'>" & __Leg & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: a811b6dd-2753-4074-8720-fab325a0fe28
+
+	/// Horas médias por título nos 10 países com mais títulos: intensidade de audiência vs média do recorte.
+	measure 'Global Intensidade HTML' =
+			VAR __Avg = [Horas Médias por Título (Mi)]
+			VAR __C = TOPN ( 10, ADDCOLUMNS ( VALUES ( dCountry[Pais] ), "@t", [Total de Títulos], "@h", [Horas Médias por Título (Mi)] ), [@t], DESC, dCountry[Pais], ASC )
+			VAR __Max = MAX ( MAXX ( __C, [@h] ), __Avg )
+			VAR __Top = TOPN ( 1, __C, [@h], DESC )
+			VAR __Rows =
+			    CONCATENATEX (
+			        __C,
+			        VAR __Up = [@h] >= __Avg
+			        RETURN
+			            "<div class='ir'><span class='in2'>" & [País Nome] & "</span><div class='tr'><div class='bar'><i style='width:" & INT ( DIVIDE ( [@h], __Max ) * 100 ) & "%;background:"
+			                & IF ( __Up, [Cor Secundária], [Cor Neutra] ) & "'></i></div><em style='left:" & FORMAT ( DIVIDE ( __Avg, __Max ) * 100, "0.0", "en-US" ) & "%'></em></div>"
+			                & "<b class='nm' style='color:" & IF ( __Up, [Cor Secundária], [Cor Texto Suave] ) & "'>" & FORMAT ( [@h], "0", "pt-BR" ) & " mi h</b></div>",
+			        "",
+			        [@h], DESC
+			    )
+			VAR __Css =
+			    "<style>.ir{display:grid;grid-template-columns:120px 1fr 64px;gap:10px;align-items:center;height:20px;font-size:12px}.in2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}"
+			    & ".ir b{text-align:right;font-weight:700}.tr{position:relative}.tr em{position:absolute;top:-4px;width:2px;height:14px;background:" & [Cor Texto] & "99}.ir .bar{height:6px}.ib{margin-top:12px}</style>"
+			RETURN
+			    IF (
+			        ISEMPTY ( __C ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Intensidade de audiência</div><div class='tt'>" & MAXX ( __Top, CALCULATE ( [País Nome] ) ) & " lidera em horas por título (" & FORMAT ( MAXX ( __Top, [@h] ), "0", "pt-BR" )
+			            & " mi h vs média " & FORMAT ( __Avg, "0", "pt-BR" ) & ")</div><div class='ib'>" & __Rows & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: cb356cbc-1822-454c-9de2-85af77deca07
+
+	/// Cabeçalho de Prêmios & Prestígio com frase-insight (prêmio × nota × audiência).
+	measure 'Cabeçalho Prêmios HTML' =
+			VAR __Ip = CALCULATE ( [IMDb Médio], KEEPFILTERS ( fStreamingCatalog[awards_won] > 0 ) )
+			VAR __In = CALCULATE ( [IMDb Médio], KEEPFILTERS ( fStreamingCatalog[awards_won] = 0 ) )
+			VAR __Hp = CALCULATE ( [Horas Médias por Título (Mi)], KEEPFILTERS ( fStreamingCatalog[awards_won] > 0 ) )
+			VAR __Hn = CALCULATE ( [Horas Médias por Título (Mi)], KEEPFILTERS ( fStreamingCatalog[awards_won] = 0 ) )
+			VAR __Dh = DIVIDE ( __Hp - __Hn, __Hn )
+			VAR __S =
+			    IF (
+			        ISBLANK ( __Ip ) || ISBLANK ( __In ), "Recorte sem títulos premiados e não premiados para comparar.",
+			        "<b>" & FORMAT ( [% Títulos Premiados], "0.0%", "pt-BR" ) & "</b> dos títulos têm prêmio; os premiados têm IMDb <b>" & FORMAT ( __Ip - __In, "+0.0;-0.0", "pt-BR" )
+			            & "</b> sobre os demais, com audiência " & IF ( ABS ( __Dh ) < 0.1, "praticamente igual", IF ( __Dh > 0, "<b>" & FORMAT ( __Dh, "0%", "pt-BR" ) & "</b> maior", "<b>" & FORMAT ( -__Dh, "0%", "pt-BR" ) & "</b> menor" ) ) & "."
+			    )
+			RETURN
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( [Cabeçalho Base HTML], "%EY%", "05 · Prêmios & Prestígio" ), "%T%", "Prêmio acompanha a nota, não a audiência" ), "%S%", __S )
+		displayFolder: 92. Páginas HTML
+		lineageTag: d6434805-a5a7-47e4-9045-a62149a535af
+
+	/// Os 12 títulos mais premiados do recorte (desempate por IMDb e votos).
+	measure 'Prêmios Ranking HTML' =
+			VAR __Top = TOPN ( 12, FILTER ( fStreamingCatalog, fStreamingCatalog[awards_won] > 0 ), fStreamingCatalog[awards_won], DESC, fStreamingCatalog[imdb_rating], DESC, fStreamingCatalog[imdb_votes], DESC, fStreamingCatalog[show_id], ASC )
+			VAR __Tr = "<svg viewBox='0 0 24 24' width='15' height='15' fill='currentColor'><path d='M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3zm-1 4v1a2 2 0 0 0 1.2 1.8A5 5 0 0 1 7 8.9V7zm11 0v1.9c0 .3 0 .6-.1.9A2 2 0 0 0 18 8V7z'/></svg>"
+			VAR __Rows =
+			    CONCATENATEX (
+			        __Top,
+			        VAR __Rk = RANKX ( __Top, fStreamingCatalog[awards_won] * 1000000 + fStreamingCatalog[imdb_rating] * 10000 + fStreamingCatalog[imdb_votes] / 100000,, DESC )
+			        VAR __Ti = SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( fStreamingCatalog[title], "&", "&amp;" ), "<", "&lt;" ), ">", "&gt;" )
+			        VAR __Aw = fStreamingCatalog[awards_won]
+			        VAR __Md = SWITCH ( __Rk, 1, [Cor Alerta], 2, [Cor Prata], 3, [Cor Bronze], [Cor Trilho] )
+			        RETURN
+			            "<div class='ar'><span class='md nm' style='background:" & __Md & IF ( __Rk <= 3, ";color:" & [Cor Fundo Página], "" ) & "'>" & __Rk & "</span>"
+			                & "<div class='at'><div class='an'>" & __Ti & "</div><div class='am'><i class='dot' style='background:" & [Cor Plataforma] & "'></i>" & [Plataforma Rótulo] & " · "
+			                & fStreamingCatalog[primary_genre] & " · " & IF ( fStreamingCatalog[type] = "Movie", "Filme", "Série" ) & " · " & fStreamingCatalog[release_year] & "</div></div>"
+			                & "<div class='tro'>" & REPT ( __Tr, MIN ( __Aw, 8 ) ) & "<b class='nm'>" & __Aw & "</b></div>"
+			                & "<span class='chip pos nm'>" & FORMAT ( fStreamingCatalog[imdb_rating], "0.0", "pt-BR" ) & "</span>"
+			                & "<span class='ah nm'>" & FORMAT ( fStreamingCatalog[hours_watched_million], "#,0", "pt-BR" ) & " mi h</span></div>",
+			        "",
+			        fStreamingCatalog[awards_won], DESC, fStreamingCatalog[imdb_rating], DESC, fStreamingCatalog[imdb_votes], DESC
+			    )
+			VAR __Css =
+			    "<style>.al{margin-top:16px}.ar{display:grid;grid-template-columns:34px 1fr 170px 52px 76px;gap:14px;align-items:center;height:62px;border-bottom:1px solid " & [Cor Trilho] & "80}"
+			    & ".ar:hover{background:" & [Cor Trilho] & "4D;border-radius:10px}"
+			    & ".md{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px}"
+			    & ".an{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.am{font-size:12px;color:" & [Cor Texto Suave] & ";margin-top:3px;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden}"
+			    & ".tro{display:flex;align-items:center;gap:1px;color:" & [Cor Alerta] & "}.tro b{margin-left:8px;font-size:14px;color:" & [Cor Texto] & "}"
+			    & ".ah{text-align:right;font-size:12px;color:" & [Cor Texto Suave] & "}</style>"
+			RETURN
+			    IF (
+			        ISEMPTY ( __Top ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título premiado no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='glow' style='width:380px;height:200px;right:-80px;top:-100px;background:" & [Cor Alerta] & ";opacity:.16'></div>"
+			            & "<div class='hdr'><div><div class='ey'>Hall da fama</div><div class='tt'>Os títulos mais premiados do recorte</div>"
+			            & "<div class='sb'>Troféus = prêmios ganhos · selo = IMDb · desempate por nota e votos</div></div>"
+			            & "<span class='chip pri nm'>" & FORMAT ( [Títulos Premiados], "#,0", "pt-BR" ) & " premiados</span></div>"
+			            & "<div class='al'>" & __Rows & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 884c88e4-0828-4f92-899b-0400e6a514aa
+
+	/// Taxa de premiação (prêmios por 100 títulos) e % de títulos premiados por plataforma, em escala única.
+	measure 'Prêmios Plataformas HTML' =
+			VAR __P = FILTER ( ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@t", [Total de Títulos], "@r", [Prêmios por 100 Títulos], "@p", [% Títulos Premiados], "@c", [Cor Plataforma] ), [@t] > 0 )
+			VAR __Max = MAXX ( __P, [@r] )
+			VAR __Avg = [Prêmios por 100 Títulos]
+			VAR __Top = TOPN ( 1, FILTER ( __P, [@t] >= 100 ), [@r], DESC )
+			VAR __Rows =
+			    CONCATENATEX (
+			        __P,
+			        "<div class='pr'><span class='qn'><i class='dot' style='background:" & [@c] & "'></i>" & [Plataforma Rótulo] & "</span>"
+			            & "<div class='tr'><div class='bar'><i style='width:" & INT ( DIVIDE ( [@r], __Max ) * 100 ) & "%;background:" & [@c] & "'></i></div>"
+			            & "<em style='left:" & FORMAT ( DIVIDE ( __Avg, __Max ) * 100, "0.0", "en-US" ) & "%'></em></div>"
+			            & "<b class='nm'>" & FORMAT ( [@r], "0.0", "pt-BR" ) & "</b><span class='nm mut' style='text-align:right'>" & FORMAT ( [@p], "0%", "pt-BR" ) & "</span></div>",
+			        "",
+			        [@r], DESC
+			    )
+			VAR __G = "display:grid;grid-template-columns:110px 1fr 44px 44px;gap:12px;align-items:center"
+			VAR __Css =
+			    "<style>.ph{" & __G & ";font-size:12px;color:" & [Cor Texto Suave] & ";margin:14px 0 4px}.pr{" & __G & ";height:33px;font-size:13px}.pr b{text-align:right}"
+			    & ".qn{display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;font-weight:600}.tr{position:relative}.tr em{position:absolute;top:-4px;width:2px;height:16px;background:" & [Cor Texto] & "99}</style>"
+			RETURN
+			    IF (
+			        ISEMPTY ( __P ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Taxa de premiação</div><div class='tt'>"
+			            & IF ( NOT ISEMPTY ( __Top ), MAXX ( __Top, dPlatform[Platform] ) & " converte mais catálogo em prêmio: " & FORMAT ( MAXX ( __Top, [@r] ), "0.0", "pt-BR" ) & " prêmios a cada 100 títulos", "Prêmios a cada 100 títulos" )
+			            & "</div><div class='ph'><span></span><span>Prêmios por 100 títulos · traço = média " & FORMAT ( __Avg, "0.0", "pt-BR" ) & "</span><span style='text-align:right'>taxa</span><span style='text-align:right'>% prem.</span></div>"
+			            & __Rows & "</div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: fa77146e-ab29-47ba-970b-9343056972a4
+
+	/// Nota IMDb e audiência média por número de prêmios: a nota sobe com o prêmio, a audiência não.
+	measure 'Prêmios Distribuição HTML' =
+			VAR __B =
+			    ADDCOLUMNS (
+			        DATATABLE ( "Ordem", INTEGER, "Rotulo", STRING, "Min", INTEGER, "Max", INTEGER, { { 0, "0", 0, 0 }, { 1, "1", 1, 1 }, { 2, "2", 2, 2 }, { 3, "3", 3, 3 }, { 4, "4+", 4, 99 } } ),
+			        "@n", VAR __A = [Min] VAR __Z = [Max] RETURN CALCULATE ( [Total de Títulos], KEEPFILTERS ( fStreamingCatalog[awards_won] >= __A && fStreamingCatalog[awards_won] <= __Z ) ) + 0,
+			        "@i", VAR __A = [Min] VAR __Z = [Max] RETURN CALCULATE ( [IMDb Médio], KEEPFILTERS ( fStreamingCatalog[awards_won] >= __A && fStreamingCatalog[awards_won] <= __Z ) ),
+			        "@h", VAR __A = [Min] VAR __Z = [Max] RETURN CALCULATE ( [Horas Médias por Título (Mi)], KEEPFILTERS ( fStreamingCatalog[awards_won] >= __A && fStreamingCatalog[awards_won] <= __Z ) )
+			    )
+			VAR __I0 = 5
+			VAR __IMax = MAX ( MAXX ( __B, [@i] ), 9 )
+			VAR __HMax = MAXX ( __B, [@h] )
+			VAR __Tot = SUMX ( __B, [@n] )
+			VAR __Cols =
+			    CONCATENATEX (
+			        __B,
+			        "<div class='dc'><div class='dv'><span class='nm'>" & IF ( [@n] > 0, FORMAT ( [@i], "0.0", "pt-BR" ), "—" ) & "</span><i style='height:"
+			            & FORMAT ( DIVIDE ( MAX ( [@i] - __I0, 0 ), __IMax - __I0 ) * 100, "0.0", "en-US" ) & "%;background:linear-gradient(180deg," & [Cor Alerta] & "," & [Cor Alerta] & "59)'></i></div>"
+			            & "<div class='dv'><span class='nm'>" & IF ( [@n] > 0, FORMAT ( [@h], "0", "pt-BR" ), "—" ) & "</span><i style='height:" & FORMAT ( DIVIDE ( [@h], __HMax ) * 100, "0.0", "en-US" )
+			            & "%;background:linear-gradient(180deg," & [Cor Secundária] & "," & [Cor Secundária] & "59)'></i></div>"
+			            & "<div class='dl'><b>" & [Rotulo] & "</b><span class='nm'>" & FORMAT ( DIVIDE ( [@n], __Tot ), "0.0%", "pt-BR" ) & "</span></div></div>",
+			        "",
+			        [Ordem], ASC
+			    )
+			VAR __Css =
+			    "<style>.dg{position:absolute;left:24px;right:24px;top:118px;bottom:16px;display:flex;gap:16px}"
+			    & ".dc{flex:1;display:grid;grid-template-rows:1fr 1fr 40px;gap:10px}.dv{display:flex;flex-direction:column;justify-content:flex-end;border-bottom:1px solid " & [Cor Trilho] & "}"
+			    & ".dv span{font-size:13px;font-weight:700;text-align:center;margin-bottom:4px}.dv i{display:block;border-radius:6px 6px 1px 1px;transform-origin:bottom;animation:gy .8s ease-out both}"
+			    & ".dl{text-align:center;font-size:12px;color:" & [Cor Texto Suave] & "}.dl b{display:block;font-size:14px;color:" & [Cor Texto] & "}"
+			    & ".ax{position:absolute;left:24px;font-size:12px;color:" & [Cor Texto Suave] & "}</style>"
+			RETURN
+			    IF (
+			        __Tot = 0,
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Prêmio × nota × audiência</div><div class='tt'>Mais prêmios, nota maior — audiência não acompanha</div>"
+			            & "<div class='sb'><i class='dot' style='background:" & [Cor Alerta] & "'></i> IMDb médio (eixo a partir de 5) &nbsp; <i class='dot' style='background:" & [Cor Secundária] & "'></i> horas médias por título (mi) &nbsp;·&nbsp; colunas = nº de prêmios</div>"
+			            & "<div class='dg'>" & __Cols & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: fc97202e-7000-4b09-9376-b35148710270
+
+	/// Cabeçalho de Tendências com frase-insight do último ano.
+	measure 'Cabeçalho Tendências HTML' =
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __At = CALCULATE ( [Total de Títulos], dCalendario[Ano] = __A1 )
+			VAR __An = CALCULATE ( [Total de Títulos], dCalendario[Ano] = __A1 - 1 )
+			VAR __P = TOPN ( 1, ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@n", CALCULATE ( [Total de Títulos], dCalendario[Ano] = __A1 ) ), [@n], DESC )
+			VAR __S =
+			    IF (
+			        ISBLANK ( __At ), "Nenhum título no recorte atual.",
+			        "<b>" & __A1 & "</b> registrou <b>" & FORMAT ( __At, "#,0", "pt-BR" ) & "</b> adições"
+			            & IF ( NOT ISBLANK ( __An ), " (" & FORMAT ( DIVIDE ( __At - __An, __An ), "+0%;-0%", "pt-BR" ) & " sobre " & __A1 - 1 & ")", "" )
+			            & "; <b>" & MAXX ( __P, dPlatform[Platform] ) & "</b> respondeu por <b>" & FORMAT ( DIVIDE ( MAXX ( __P, [@n] ), __At ), "0%", "pt-BR" ) & "</b> delas."
+			    )
+			RETURN
+			    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( [Cabeçalho Base HTML], "%EY%", "06 · Tendências" ), "%T%", "Para onde o catálogo está indo" ), "%S%", __S )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 3cad8740-22f6-4b31-aa79-a7bb00aa6ea9
+
+	/// Áreas empilhadas de adições por ano e plataforma (até 22 anos), com rótulos à direita e realce ao passar o mouse.
+	measure 'Tendência Plataformas HTML' =
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __A0 = MAX ( YEAR ( MIN ( fStreamingCatalog[date_added] ) ), __A1 - 21 )
+			VAR __Y = FILTER ( VALUES ( dCalendario[Ano] ), dCalendario[Ano] >= __A0 && dCalendario[Ano] <= __A1 )
+			VAR __NY = COUNTROWS ( __Y )
+			VAR __P0 = FILTER ( ADDCOLUMNS ( VALUES ( dPlatform[Platform] ), "@t", CALCULATE ( [Total de Títulos], dCalendario[Ano] >= __A0 && dCalendario[Ano] <= __A1 ), "@c", [Cor Plataforma] ), [@t] > 0 )
+			VAR __P = ADDCOLUMNS ( __P0, "@k", RANKX ( __P0, [@t],, DESC, DENSE ) )
+			VAR __PY = ADDCOLUMNS ( CROSSJOIN ( SELECTCOLUMNS ( __P, "Plat", dPlatform[Platform], "K", [@k] ), __Y ), "@n", CALCULATE ( [Total de Títulos], TREATAS ( { [Plat] }, dPlatform[Platform] ) ) + 0 )
+			VAR __PYc = ADDCOLUMNS ( __PY, "@top", VAR __K = [K] VAR __Yr = dCalendario[Ano] RETURN SUMX ( FILTER ( __PY, [K] <= __K && dCalendario[Ano] = __Yr ), [@n] ) )
+			VAR __Raw = MAXX ( __PYc, [@top] )
+			VAR __Mag = POWER ( 10, INT ( LOG10 ( MAX ( __Raw, 1 ) ) ) )
+			VAR __Step = SWITCH ( TRUE (), __Raw / ( __Mag / 5 ) <= 5, __Mag / 5, __Raw / ( __Mag / 2 ) <= 5, __Mag / 2, __Raw / __Mag <= 5, __Mag, __Mag * 2 )
+			VAR __NL = MAX ( ROUNDUP ( DIVIDE ( __Raw, __Step ), 0 ), 1 )
+			VAR __Max = __NL * __Step
+			VAR __W = 1000
+			VAR __H = 300
+			VAR __X = DIVIDE ( __W, MAX ( __NY - 1, 1 ) )
+			VAR __Polys =
+			    CONCATENATEX (
+			        __P,
+			        VAR __K = [@k]
+			        VAR __Me = FILTER ( __PYc, [K] = __K )
+			        VAR __Up = CONCATENATEX ( __Me, FORMAT ( ( dCalendario[Ano] - __A0 ) * __X, "0.0", "en-US" ) & "," & FORMAT ( __H - DIVIDE ( [@top], __Max ) * __H, "0.0", "en-US" ), " ", dCalendario[Ano], ASC )
+			        VAR __Dn = CONCATENATEX ( __Me, FORMAT ( ( dCalendario[Ano] - __A0 ) * __X, "0.0", "en-US" ) & "," & FORMAT ( __H - DIVIDE ( [@top] - [@n], __Max ) * __H, "0.0", "en-US" ), " ", dCalendario[Ano], DESC )
+			        RETURN
+			            "<polygon points='" & __Up & " " & __Dn & "' fill='" & [@c] & "'><title>" & dPlatform[Platform] & ": " & FORMAT ( [@t], "#,0", "pt-BR" ) & " títulos adicionados em " & __A0 & "–" & __A1 & "</title></polygon>",
+			        "",
+			        [@k], DESC
+			    )
+			VAR __NPl = COUNTROWS ( __P )
+			VAR __Labels =
+			    CONCATENATEX (
+			        __P,
+			        VAR __K = [@k]
+			        VAR __Nl = MAXX ( FILTER ( __PYc, [K] = __K && dCalendario[Ano] = __A1 ), [@n] ) + 0
+			        RETURN
+			            "<div class='sl2' style='top:" & FORMAT ( DIVIDE ( __NPl - __K + 0.5, __NPl ) * 100, "0.0", "en-US" ) & "%'><i class='dot' style='background:" & [@c] & "'></i>"
+			                & [Plataforma Rótulo] & " <b class='nm'>" & FORMAT ( __Nl, "#,0", "pt-BR" ) & "</b></div>",
+			        "",
+			        [@k], ASC
+			    )
+			VAR __Ticks =
+			    CONCATENATEX (
+			        FILTER ( __Y, ( MOD ( dCalendario[Ano], 5 ) = 0 && dCalendario[Ano] < __A1 - 2 && dCalendario[Ano] > __A0 + 2 ) || dCalendario[Ano] = __A1 || dCalendario[Ano] = __A0 ),
+			        "<span style='left:" & FORMAT ( DIVIDE ( dCalendario[Ano] - __A0, MAX ( __NY - 1, 1 ) ) * 100, "0.0", "en-US" ) & "%'>" & dCalendario[Ano] & "</span>",
+			        "", dCalendario[Ano], ASC
+			    )
+			VAR __Grid =
+			    CONCATENATEX (
+			        GENERATESERIES ( 1, MAX ( __NL, 1 ), 1 ),
+			        "<div class='gl' style='bottom:" & FORMAT ( DIVIDE ( [Value], __NL ) * 100, "0.0", "en-US" ) & "%'><span class='nm'>" & FORMAT ( __Step * [Value], "#,0", "pt-BR" ) & "</span></div>",
+			        ""
+			    )
+			VAR __Css =
+			    "<style>.sa{position:absolute;left:72px;right:210px;top:112px;bottom:52px}"
+			    & ".sa svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.sa polygon{opacity:.9;transition:opacity .15s;stroke:" & [Cor Fundo Card] & ";stroke-width:.6}"
+			    & ".sa svg:hover polygon{opacity:.25}.sa svg polygon:hover{opacity:1}"
+			    & ".gl{position:absolute;left:0;right:0;border-top:1px dashed " & [Cor Trilho] & "}.gl span{position:absolute;left:-54px;top:-9px;width:46px;text-align:right;font-size:12px;color:" & [Cor Texto Suave] & "}"
+			    & ".xa{position:absolute;left:72px;right:210px;bottom:24px;height:18px}.xa span{position:absolute;transform:translateX(-50%);font-size:12px;color:" & [Cor Texto Suave] & "}"
+			    & ".sls{position:absolute;right:24px;top:112px;bottom:52px;width:176px}.sl2{position:absolute;left:0;right:0;transform:translateY(-50%);font-size:12px;display:flex;align-items:center;gap:6px;white-space:nowrap}"
+			    & ".sl2 b{margin-left:auto}</style>"
+			RETURN
+			    IF (
+			        ISEMPTY ( __P ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='hdr'><div><div class='ey'>Adições por ano e plataforma</div><div class='tt'>Como cada plataforma alimentou o crescimento do catálogo, " & __A0 & "–" & __A1 & "</div>"
+			            & "<div class='sb'>Áreas empilhadas · passe o mouse para isolar uma plataforma · legenda na ordem das camadas (de cima para baixo) · valores = adições em " & __A1 & "</div></div></div>"
+			            & "<div class='sa'>" & __Grid & "<svg viewBox='0 0 " & __W & " " & __H & "' preserveAspectRatio='none'>" & __Polys & "</svg></div>"
+			            & "<div class='xa'>" & __Ticks & "</div><div class='sls'>" & __Labels & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 164ee43a-5692-477e-8b04-9693485a36b1
+
+	/// Pequenos múltiplos dos 8 maiores gêneros: adições por ano (11 anos) e variação dos últimos 5 anos contra os 5 anteriores.
+	measure 'Tendência Gêneros HTML' =
+			VAR __A1 = YEAR ( MAX ( fStreamingCatalog[date_added] ) )
+			VAR __A0 = __A1 - 10
+			VAR __G = TOPN ( 8, ADDCOLUMNS ( VALUES ( dGenre[Genero] ), "@t", CALCULATE ( [Total de Títulos], dCalendario[Ano] >= __A0 && dCalendario[Ano] <= __A1 ) ), [@t], DESC, dGenre[Genero], ASC )
+			VAR __Cards =
+			    CONCATENATEX (
+			        FILTER ( __G, [@t] > 0 ),
+			        VAR __S = ADDCOLUMNS ( FILTER ( ALL ( dCalendario[Ano] ), dCalendario[Ano] >= __A0 && dCalendario[Ano] <= __A1 ), "@v", CALCULATE ( [Total de Títulos] ) + 0 )
+			        VAR __Mx = MAXX ( __S, [@v] )
+			        VAR __Pts = CONCATENATEX ( __S, FORMAT ( ( dCalendario[Ano] - __A0 ) * 22 + 4, "0.0", "en-US" ) & "," & FORMAT ( 62 - DIVIDE ( [@v], __Mx ) * 56, "0.0", "en-US" ), " ", dCalendario[Ano], ASC )
+			        VAR __R = SUMX ( FILTER ( __S, dCalendario[Ano] > __A1 - 5 ), [@v] )
+			        VAR __Pv = CALCULATE ( [Total de Títulos], dCalendario[Ano] > __A1 - 10 && dCalendario[Ano] <= __A1 - 5 )
+			        VAR __D = DIVIDE ( __R - __Pv, __Pv )
+			        VAR __Id = SUBSTITUTE ( dGenre[Genero], " ", "" )
+			        RETURN
+			            "<div class='sm'><div class='sh'><span>" & dGenre[Genero] & "</span>"
+			                & IF ( NOT ISBLANK ( __D ), "<span class='chip " & IF ( __D >= 0, "pos'>" & UNICHAR ( 9650 ), "neg'>" & UNICHAR ( 9660 ) ) & " " & FORMAT ( ABS ( __D ), "0%", "pt-BR" ) & "</span>" )
+			                & "</div><svg viewBox='0 0 228 66' preserveAspectRatio='none'><defs><linearGradient id='g" & __Id & "' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='" & [Cor Primária] & "' stop-opacity='.5'/>"
+			                & "<stop offset='1' stop-color='" & [Cor Primária] & "' stop-opacity='0'/></linearGradient></defs><polygon points='4,64 " & __Pts & " 224,64' fill='url(#g" & __Id & ")'/>"
+			                & "<polyline points='" & __Pts & "' fill='none' stroke='" & [Cor Destaque Suave] & "' stroke-width='2' stroke-linejoin='round' vector-effect='non-scaling-stroke'/></svg>"
+			                & "<div class='sf'><span class='nm'>" & FORMAT ( [@t], "#,0", "pt-BR" ) & " títulos</span><span>" & __A0 & "–" & __A1 & "</span></div></div>",
+			        "",
+			        [@t], DESC, dGenre[Genero], ASC
+			    )
+			VAR __Css =
+			    "<style>.smg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}.sm{border-radius:14px;padding:12px 14px;background:" & [Cor Fundo Página] & "80;border:1px solid " & [Cor Trilho] & "}"
+			    & ".sh{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700}.sm svg{width:100%;height:78px;margin-top:6px;display:block}"
+			    & ".sf{display:flex;justify-content:space-between;font-size:12px;color:" & [Cor Texto Suave] & ";margin-top:4px}</style>"
+			RETURN
+			    IF (
+			        ISEMPTY ( __G ),
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Gêneros em movimento</div><div class='tt'>Adições por ano nos 8 maiores gêneros</div>"
+			            & "<div class='sb'>Selo = últimos 5 anos vs 5 anteriores</div><div class='smg'>" & __Cards & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: 67cb9c06-6563-4fde-8710-127c02b3c065
+
+	/// Distribuição do catálogo por década de lançamento, com IMDb médio de cada década.
+	measure 'Tendência Décadas HTML' =
+			VAR __D =
+			    ADDCOLUMNS (
+			        GENERATESERIES ( 1980, 2020, 10 ),
+			        "@n", VAR __V = [Value] RETURN CALCULATE ( [Total de Títulos], KEEPFILTERS ( fStreamingCatalog[release_year] >= __V && fStreamingCatalog[release_year] < __V + 10 ) ) + 0,
+			        "@i", VAR __V = [Value] RETURN CALCULATE ( [IMDb Médio], KEEPFILTERS ( fStreamingCatalog[release_year] >= __V && fStreamingCatalog[release_year] < __V + 10 ) )
+			    )
+			VAR __Tot = SUMX ( __D, [@n] )
+			VAR __Max = MAXX ( __D, [@n] )
+			VAR __Rec = DIVIDE ( SUMX ( FILTER ( __D, [Value] >= 2010 ), [@n] ), __Tot )
+			VAR __Cols =
+			    CONCATENATEX (
+			        __D,
+			        "<div class='de'><span class='nm'>" & FORMAT ( DIVIDE ( [@n], __Tot ), "0%", "pt-BR" ) & "</span><i style='height:" & FORMAT ( DIVIDE ( [@n], __Max ) * 100, "0.0", "en-US" )
+			            & "%;background:linear-gradient(180deg," & IF ( [Value] >= 2010, [Cor Acento] & "," & [Cor Primária], [Cor Neutra] & "," & [Cor Trilho] ) & ")'></i>"
+			            & "<b>" & RIGHT ( [Value], 2 ) & "s</b><small class='nm'>IMDb " & FORMAT ( [@i], "0.0", "pt-BR" ) & "</small></div>",
+			        "",
+			        [Value], ASC
+			    )
+			VAR __Css =
+			    "<style>.dd{position:absolute;left:24px;right:24px;top:118px;bottom:18px;display:flex;gap:14px;align-items:flex-end}"
+			    & ".de{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;text-align:center}.de span{font-size:13px;font-weight:700;margin-bottom:4px}"
+			    & ".de i{display:block;border-radius:8px 8px 2px 2px;transform-origin:bottom;animation:gy .8s ease-out both}.de b{font-size:14px;margin-top:8px}.de small{font-size:12px;color:" & [Cor Texto Suave] & "}</style>"
+			RETURN
+			    IF (
+			        __Tot = 0,
+			        [CSS Base HTML] & "<div class='cd'><div class='vazio'>Nenhum título no recorte atual.</div></div>",
+			        [CSS Base HTML] & __Css
+			            & "<div class='cd'><div class='ey'>Década de lançamento</div><div class='tt'>" & FORMAT ( __Rec, "0%", "pt-BR" ) & " do recorte foi lançado a partir de 2010</div>"
+			            & "<div class='sb'>Nota média estável entre décadas</div><div class='dd'>" & __Cols & "</div></div>"
+			    )
+		displayFolder: 92. Páginas HTML
+		lineageTag: d87a4c1a-7ad4-4503-b65a-f5d626842b43
+
+	/// Cabeçalho da página Catálogo.
+	measure 'Cabeçalho Catálogo HTML' =
+			SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( [Cabeçalho Base HTML], "%EY%", "07 · Catálogo" ), "%T%", "Investigue título a título" ),
+			    "%S%", "Tabela nativa com o recorte atual: ordene clicando no cabeçalho, busque pelo título e exporte os dados pelo menu do visual." )
+		displayFolder: 92. Páginas HTML
+		lineageTag: f57ec89c-1c01-4fb6-b3ad-66028a0d7ba4
+
+	/// Faixa-resumo do recorte exibido na tabela do Catálogo.
+	measure 'Catálogo Resumo HTML' =
+			VAR __K = "<div class='kk'><span class='ey'>%L%</span><b class='nm'>%V%</b></div>"
+			VAR __Css = "<style>.ks2{display:flex;height:100%;align-items:center}.kk{flex:1;padding:0 20px;border-left:1px solid " & [Cor Trilho] & "}.kk:first-child{border-left:0}.kk b{display:block;font-size:24px;font-weight:700;margin-top:4px}</style>"
+			RETURN
+			    [CSS Base HTML] & __Css & "<div class='cd' style='padding:16px 4px'><div class='ks2'>"
+			        & SUBSTITUTE ( SUBSTITUTE ( __K, "%L%", "Títulos" ), "%V%", FORMAT ( [Total de Títulos] + 0, "#,0", "pt-BR" ) )
+			        & SUBSTITUTE ( SUBSTITUTE ( __K, "%L%", "Filmes" ), "%V%", FORMAT ( [Total de Filmes] + 0, "#,0", "pt-BR" ) )
+			        & SUBSTITUTE ( SUBSTITUTE ( __K, "%L%", "Séries" ), "%V%", FORMAT ( [Total de Séries] + 0, "#,0", "pt-BR" ) )
+			        & SUBSTITUTE ( SUBSTITUTE ( __K, "%L%", "IMDb médio" ), "%V%", IF ( ISBLANK ( [IMDb Médio] ), "—", FORMAT ( [IMDb Médio], "0.0", "pt-BR" ) ) )
+			        & SUBSTITUTE ( SUBSTITUTE ( __K, "%L%", "Horas assistidas" ), "%V%", FORMAT ( [Horas Assistidas (Mi)] / 1000 + 0, "#,0.0", "pt-BR" ) & " bi" )
+			        & SUBSTITUTE ( SUBSTITUTE ( __K, "%L%", "Prêmios" ), "%V%", FORMAT ( [Prêmios Ganhos] + 0, "#,0", "pt-BR" ) )
+			        & "</div></div>"
+		displayFolder: 92. Páginas HTML
+		lineageTag: 1c5c0709-98e7-446f-8c64-bb82cc501de4
+
+	column Medidas
+		isHidden
+		lineageTag: 75a50aa7-5abe-4112-ae9f-6d4b1a403952
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Medidas]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Medidas = calculated
+		mode: import
+		source = SELECTCOLUMNS ( { 1 }, "Medidas", ''[Value] )
+

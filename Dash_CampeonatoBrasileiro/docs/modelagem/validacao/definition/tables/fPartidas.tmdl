@@ -1,0 +1,78 @@
+table dPartida
+
+	column PartidaId
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: PartidaId
+
+	column Temporada
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Temporada
+
+	column Rodada
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Rodada
+
+	column Hora
+		dataType: dateTime
+		formatString: HH:mm
+		summarizeBy: none
+		sourceColumn: Hora
+
+		annotation UnderlyingDateTimeDataType = Time
+
+	column Arena
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Arena
+
+	column Mandante
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Mandante
+
+	column Visitante
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Visitante
+
+	column Confronto
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Confronto
+
+	column Placar
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Placar
+
+	column Vencedor
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Vencedor
+
+	partition dPartida = m
+		mode: import
+		queryGroup: Dimensões
+		source =
+				// Atributos da partida: uma linha por jogo
+				let
+				    Fonte = stgPartidas,
+				    TemporadaAdicionada = Table.AddColumn(Fonte, "Temporada", each fxTemporada([Data]), Int64.Type),
+				    PlacarAdicionado = Table.AddColumn(TemporadaAdicionada, "Placar",
+				        each Text.From([PlacarMandante]) & " x " & Text.From([PlacarVisitante]), type text),
+				    ConfrontoAdicionado = Table.AddColumn(PlacarAdicionado, "Confronto",
+				        each [Mandante] & " x " & [Visitante], type text),
+				    ColunasSelecionadas = Table.SelectColumns(ConfrontoAdicionado, {
+				        "PartidaId", "Temporada", "Rodada", "Hora", "Arena",
+				        "Mandante", "Visitante", "Confronto", "Placar", "Vencedor"
+				    })
+				in
+				    ColunasSelecionadas
+

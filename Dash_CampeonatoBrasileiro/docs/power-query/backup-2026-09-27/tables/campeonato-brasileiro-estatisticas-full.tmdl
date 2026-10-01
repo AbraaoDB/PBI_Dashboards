@@ -1,0 +1,131 @@
+table campeonato-brasileiro-estatisticas-full
+	lineageTag: 6bcfbe04-a204-454d-9af5-82f4d5f9f552
+
+	column partida_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 8d0569f7-b353-49a2-894d-ec840bce2a69
+		summarizeBy: sum
+		sourceColumn: partida_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column rodata
+		dataType: int64
+		formatString: 0
+		lineageTag: e0dff89b-4780-4eab-b686-749cf00eccaf
+		summarizeBy: sum
+		sourceColumn: rodata
+
+		annotation SummarizationSetBy = Automatic
+
+	column clube
+		dataType: string
+		lineageTag: 35d1aef4-04af-4370-a552-1c7ce1c32e2a
+		summarizeBy: none
+		sourceColumn: clube
+
+		annotation SummarizationSetBy = Automatic
+
+	column chutes
+		dataType: int64
+		formatString: 0
+		lineageTag: ab9ecec6-eb6e-4bfb-a0a2-21669b820186
+		summarizeBy: sum
+		sourceColumn: chutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column chutes_no_alvo
+		dataType: int64
+		formatString: 0
+		lineageTag: 53d4ec15-04ae-461e-97a4-12ad4ba5821c
+		summarizeBy: sum
+		sourceColumn: chutes_no_alvo
+
+		annotation SummarizationSetBy = Automatic
+
+	column posse_de_bola
+		dataType: string
+		lineageTag: e0fc994f-836c-45ee-b81f-bdf2fcabd02f
+		summarizeBy: none
+		sourceColumn: posse_de_bola
+
+		annotation SummarizationSetBy = Automatic
+
+	column passes
+		dataType: int64
+		formatString: 0
+		lineageTag: 262e5a07-4726-4f71-a104-a9b3b1ac8801
+		summarizeBy: sum
+		sourceColumn: passes
+
+		annotation SummarizationSetBy = Automatic
+
+	column precisao_passes
+		dataType: string
+		lineageTag: 97593588-ca9a-44d2-9de8-cac689255825
+		summarizeBy: none
+		sourceColumn: precisao_passes
+
+		annotation SummarizationSetBy = Automatic
+
+	column faltas
+		dataType: int64
+		formatString: 0
+		lineageTag: a49c8a63-f5e3-4627-bad1-392d0d4dbff2
+		summarizeBy: sum
+		sourceColumn: faltas
+
+		annotation SummarizationSetBy = Automatic
+
+	column cartao_amarelo
+		dataType: int64
+		formatString: 0
+		lineageTag: 44a58281-fe37-40f8-9ab8-807bacb57bab
+		summarizeBy: sum
+		sourceColumn: cartao_amarelo
+
+		annotation SummarizationSetBy = Automatic
+
+	column cartao_vermelho
+		dataType: int64
+		formatString: 0
+		lineageTag: cbc467a4-327f-48bb-9742-a8379acf9168
+		summarizeBy: sum
+		sourceColumn: cartao_vermelho
+
+		annotation SummarizationSetBy = Automatic
+
+	column impedimentos
+		dataType: int64
+		formatString: 0
+		lineageTag: 3b1feaa9-e3f5-4e08-bc08-1e778e909d40
+		summarizeBy: sum
+		sourceColumn: impedimentos
+
+		annotation SummarizationSetBy = Automatic
+
+	column escanteios
+		dataType: int64
+		formatString: 0
+		lineageTag: 76ccba93-5b8c-41e3-81b2-5257a8e2c215
+		summarizeBy: sum
+		sourceColumn: escanteios
+
+		annotation SummarizationSetBy = Automatic
+
+	partition campeonato-brasileiro-estatisticas-full = m
+		mode: import
+		source =
+				let
+				    Fonte = Csv.Document(File.Contents("C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_CampeonatoBrasileiro\Data\campeonato-brasileiro-estatisticas-full.csv"),[Delimiter=",", Columns=13, Encoding=1252, QuoteStyle=QuoteStyle.None]),
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"partida_id", Int64.Type}, {"rodata", Int64.Type}, {"clube", type text}, {"chutes", Int64.Type}, {"chutes_no_alvo", Int64.Type}, {"posse_de_bola", type text}, {"passes", Int64.Type}, {"precisao_passes", type text}, {"faltas", Int64.Type}, {"cartao_amarelo", Int64.Type}, {"cartao_vermelho", Int64.Type}, {"impedimentos", Int64.Type}, {"escanteios", Int64.Type}})
+				in
+				    #"Tipo Alterado"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

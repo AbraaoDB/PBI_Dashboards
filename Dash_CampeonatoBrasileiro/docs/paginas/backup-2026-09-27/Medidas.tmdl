@@ -1,0 +1,448 @@
+table Medidas
+
+	/// Número de jogos disputados: uma linha por clube em cada partida.
+	measure Jogos = ```
+			COUNTROWS ( fDesempenho )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Jogos com resultado Vitória.
+	measure 'Vitórias' = ```
+			CALCULATE ( COUNTROWS ( fDesempenho ), KEEPFILTERS ( fDesempenho[Resultado] = "Vitória" ) )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Jogos com resultado Empate.
+	measure Empates = ```
+			CALCULATE ( COUNTROWS ( fDesempenho ), KEEPFILTERS ( fDesempenho[Resultado] = "Empate" ) )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Jogos com resultado Derrota.
+	measure Derrotas = ```
+			CALCULATE ( COUNTROWS ( fDesempenho ), KEEPFILTERS ( fDesempenho[Resultado] = "Derrota" ) )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Soma de pontos: vitória 3, empate 1, derrota 0.
+	measure Pontos = ```
+			SUM ( fDesempenho[Pontos] )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Pontos conquistados sobre os pontos disputados (jogos × 3).
+	measure 'Aproveitamento %' = ```
+			DIVIDE ( [Pontos], [Jogos] * 3 )
+			```
+		formatString: 0.0%
+		displayFolder: 01. Campanha
+
+	/// Gols marcados pelo clube, pelo placar da partida.
+	measure 'Gols Pró' = ```
+			SUM ( fDesempenho[GolsPro] )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Gols sofridos pelo clube, pelo placar da partida.
+	measure 'Gols Contra' = ```
+			SUM ( fDesempenho[GolsContra] )
+			```
+		formatString: #,0
+		displayFolder: 01. Campanha
+
+	/// Gols pró menos gols contra.
+	measure 'Saldo de Gols' = ```
+			[Gols Pró] - [Gols Contra]
+			```
+		formatString: +#,0;-#,0;0
+		displayFolder: 01. Campanha
+
+	/// Média de gols marcados por jogo do clube.
+	measure 'Gols Pró por Jogo' = ```
+			DIVIDE ( [Gols Pró], [Jogos] )
+			```
+		formatString: 0.00
+		displayFolder: 01. Campanha
+
+	/// Média de gols sofridos por jogo do clube.
+	measure 'Gols Contra por Jogo' = ```
+			DIVIDE ( [Gols Contra], [Jogos] )
+			```
+		formatString: 0.00
+		displayFolder: 01. Campanha
+
+	/// Temporada do contexto quando há uma só; vazio quando há várias. Funciona com o slicer em dPartida ou em dCalendario.
+	measure 'Temporada Selecionada' = ```
+			VAR __temporadas = SUMMARIZE ( fDesempenho, dPartida[Temporada] )
+			RETURN
+			    IF ( COUNTROWS ( __temporadas ) = 1, MAXX ( __temporadas, dPartida[Temporada] ) )
+			```
+		formatString: 0
+		displayFolder: 99. Técnicas
+
+	/// Chave numérica de ordenação: Pontos, depois Vitórias, Saldo de gols e Gols pró (critério R2).
+	measure 'Índice Classificação' = ```
+			VAR __Pontos = [Pontos]
+			VAR __Vitorias = [Vitórias] + 0
+			VAR __Saldo = [Saldo de Gols] + 0
+			VAR __GolsPro = [Gols Pró] + 0
+			RETURN
+			    IF (
+			        NOT ISBLANK ( __Pontos ),
+			        ( ( __Pontos * 100 + __Vitorias ) * 1000 + ( __Saldo + 500 ) ) * 1000 + __GolsPro
+			    )
+			```
+		formatString: 0
+		isHidden
+		displayFolder: 99. Técnicas
+
+	/// Posição do clube na classificação da temporada (Pontos, Vitórias, Saldo, Gols pró). Exige uma única temporada no contexto.
+	measure 'Posição' = ```
+			VAR __clubes =
+			    CALCULATETABLE ( SUMMARIZE ( fDesempenho, dClube[Clube] ), REMOVEFILTERS ( dClube ) )
+			RETURN
+			    IF (
+			        HASONEVALUE ( dClube[Clube] )
+			            && NOT ISBLANK ( [Temporada Selecionada] )
+			            && NOT ISBLANK ( [Pontos] ),
+			        RANKX ( __clubes, [Índice Classificação], , DESC, SKIP )
+			    )
+			```
+		formatString: 0"º"
+		displayFolder: 02. Classificação
+
+	/// Pontos somados da 1ª rodada até a rodada do contexto, na temporada selecionada.
+	measure 'Pontos Acumulados' = ```
+			VAR __RodadaAtual = MAX ( dPartida[Rodada] )
+			RETURN
+			    IF (
+			        NOT ISBLANK ( [Temporada Selecionada] ),
+			        CALCULATE ( [Pontos], dPartida[Rodada] <= __RodadaAtual )
+			    )
+			```
+		formatString: #,0
+		displayFolder: 02. Classificação
+
+	/// Posição do clube na classificação acumulada até a rodada do contexto.
+	measure 'Posição na Rodada' = ```
+			VAR __RodadaAtual = MAX ( dPartida[Rodada] )
+			VAR __clubes =
+			    CALCULATETABLE (
+			        SUMMARIZE ( fDesempenho, dClube[Clube] ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( dPartida[Rodada] )
+			    )
+			RETURN
+			    IF (
+			        HASONEVALUE ( dClube[Clube] ) && NOT ISBLANK ( [Pontos Acumulados] ),
+			        RANKX (
+			            __clubes,
+			            CALCULATE ( [Índice Classificação], dPartida[Rodada] <= __RodadaAtual ),
+			            ,
+			            DESC,
+			            SKIP
+			        )
+			    )
+			```
+		formatString: 0"º"
+		displayFolder: 02. Classificação
+
+	/// Número de clubes participantes no contexto, independentemente do clube filtrado.
+	measure 'Clubes na Temporada' = ```
+			CALCULATE ( DISTINCTCOUNT ( fDesempenho[Clube] ), REMOVEFILTERS ( dClube ) )
+			```
+		formatString: #,0
+		displayFolder: 02. Classificação
+
+	/// Campeão (1º) ou Rebaixado (4 últimos, de 2006 em diante; 2003–2005 sem zona até confirmação).
+	measure Zona = ```
+			VAR __Posicao = [Posição]
+			VAR __Clubes = [Clubes na Temporada]
+			VAR __Temporada = [Temporada Selecionada]
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( __Posicao ), BLANK (),
+			        __Posicao = 1, "Campeão",
+			        __Temporada >= 2006 && __Posicao > __Clubes - 4, "Rebaixado"
+			    )
+			```
+		displayFolder: 02. Classificação
+
+	/// Clube em 1º lugar na temporada selecionada.
+	measure 'Campeão' = ```
+			VAR __clubes =
+			    CALCULATETABLE ( SUMMARIZE ( fDesempenho, dClube[Clube] ), REMOVEFILTERS ( dClube ) )
+			VAR __ranking = ADDCOLUMNS ( __clubes, "@Indice", [Índice Classificação] )
+			VAR __lider = TOPN ( 1, __ranking, [@Indice], DESC )
+			RETURN
+			    IF ( NOT ISBLANK ( [Temporada Selecionada] ), CONCATENATEX ( __lider, dClube[Clube], ", " ) )
+			```
+		displayFolder: 02. Classificação
+
+	/// Número de partidas distintas (cada jogo conta uma vez).
+	measure Partidas = ```
+			DISTINCTCOUNT ( fDesempenho[PartidaId] )
+			```
+		formatString: #,0
+		displayFolder: 03. Liga
+
+	/// Partidas da liga no período, ignorando clube, mando, adversário e resultado (regra R4).
+	measure 'Partidas (Liga)' = ```
+			CALCULATE (
+			    [Partidas],
+			    REMOVEFILTERS ( dClube ),
+			    REMOVEFILTERS ( fDesempenho[Mando], fDesempenho[Adversario], fDesempenho[Resultado] )
+			)
+			```
+		formatString: #,0
+		displayFolder: 03. Liga
+
+	/// Total de gols da liga dividido pelo número de partidas.
+	measure 'Gols por Jogo (Liga)' = ```
+			VAR __Gols =
+			    CALCULATE (
+			        [Gols Pró],
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Mando], fDesempenho[Adversario], fDesempenho[Resultado] )
+			    )
+			RETURN
+			    DIVIDE ( __Gols, [Partidas (Liga)] )
+			```
+		formatString: 0.00
+		displayFolder: 03. Liga
+
+	/// Partidas vencidas pelo mandante sobre o total de partidas da liga.
+	measure '% Vitórias do Mandante' = ```
+			VAR __VitoriasMandante =
+			    CALCULATE (
+			        COUNTROWS ( fDesempenho ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Adversario] ),
+			        fDesempenho[Mando] = "Casa",
+			        fDesempenho[Resultado] = "Vitória"
+			    )
+			RETURN
+			    DIVIDE ( __VitoriasMandante, [Partidas (Liga)] )
+			```
+		formatString: 0.0%
+		displayFolder: 03. Liga
+
+	/// Partidas vencidas pelo visitante sobre o total de partidas da liga.
+	measure '% Vitórias do Visitante' = ```
+			VAR __VitoriasVisitante =
+			    CALCULATE (
+			        COUNTROWS ( fDesempenho ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Adversario] ),
+			        fDesempenho[Mando] = "Fora",
+			        fDesempenho[Resultado] = "Vitória"
+			    )
+			RETURN
+			    DIVIDE ( __VitoriasVisitante, [Partidas (Liga)] )
+			```
+		formatString: 0.0%
+		displayFolder: 03. Liga
+
+	/// Partidas empatadas sobre o total de partidas da liga (conta a linha do mandante para não duplicar).
+	measure '% Empates' = ```
+			VAR __Empates =
+			    CALCULATE (
+			        COUNTROWS ( fDesempenho ),
+			        REMOVEFILTERS ( dClube ),
+			        REMOVEFILTERS ( fDesempenho[Adversario] ),
+			        fDesempenho[Mando] = "Casa",
+			        fDesempenho[Resultado] = "Empate"
+			    )
+			RETURN
+			    DIVIDE ( __Empates, [Partidas (Liga)] )
+			```
+		formatString: 0.0%
+		displayFolder: 03. Liga
+
+	/// Gols com lance registrado (autor e minuto); disponível a partir de 2014.
+	measure 'Gols Registrados' = ```
+			COUNTROWS ( fGols )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Gols para a artilharia: exclui gol contra (regra R5).
+	measure 'Gols do Atleta' = ```
+			CALCULATE ( COUNTROWS ( fGols ), KEEPFILTERS ( fGols[TipoGol] <> "Gol Contra" ) )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Gols marcados de pênalti.
+	measure 'Gols de Pênalti' = ```
+			CALCULATE ( COUNTROWS ( fGols ), KEEPFILTERS ( fGols[TipoGol] = "Penalty" ) )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Gols de pênalti sobre os gols registrados.
+	measure '% Gols de Pênalti' = ```
+			DIVIDE ( [Gols de Pênalti], [Gols Registrados] )
+			```
+		formatString: 0.0%
+		displayFolder: 04. Gols
+
+	/// Participação da faixa de minuto no total de gols registrados do contexto.
+	measure '% dos Gols na Faixa' = ```
+			DIVIDE (
+			    [Gols Registrados],
+			    CALCULATE ( [Gols Registrados], REMOVEFILTERS ( fGols[FaixaMinuto], fGols[FaixaMinutoOrdem] ) )
+			)
+			```
+		formatString: 0.0%
+		displayFolder: 04. Gols
+
+	/// Gols marcados pelos adversários nas partidas do clube filtrado; permite cortar por faixa de minuto. Exige clube no contexto.
+	measure 'Gols Sofridos (Lances)' = ```
+			VAR __clubes = VALUES ( dClube[Clube] )
+			VAR __partidas = VALUES ( fDesempenho[PartidaId] )
+			RETURN
+			    IF (
+			        ISFILTERED ( dClube[Clube] ),
+			        CALCULATE (
+			            COUNTROWS ( fGols ),
+			            REMOVEFILTERS ( dClube ),
+			            TREATAS ( __partidas, fGols[PartidaId] ),
+			            NOT ( fGols[Clube] IN __clubes )
+			        )
+			    )
+			```
+		formatString: #,0
+		displayFolder: 04. Gols
+
+	/// Atleta com mais gols (sem gol contra) no contexto; empates listados juntos, com o total entre parênteses.
+	measure Artilheiro = ```
+			VAR __atletas =
+			    FILTER (
+			        ADDCOLUMNS ( VALUES ( fGols[Atleta] ), "@Gols", [Gols do Atleta] ),
+			        NOT ISBLANK ( fGols[Atleta] ) && NOT ISBLANK ( [@Gols] )
+			    )
+			VAR __lideres = TOPN ( 1, __atletas, [@Gols], DESC )
+			VAR __Gols = MAXX ( __lideres, [@Gols] )
+			RETURN
+			    IF (
+			        NOT ISEMPTY ( __lideres ),
+			        CONCATENATEX ( __lideres, fGols[Atleta], ", ", fGols[Atleta], ASC ) & " (" & __Gols & ")"
+			    )
+			```
+		displayFolder: 04. Gols
+
+	/// Total de cartões (amarelos e vermelhos); disponível de 2014 a 2024.
+	measure 'Cartões' = ```
+			COUNTROWS ( fCartoes )
+			```
+		formatString: #,0
+		displayFolder: 05. Disciplina
+
+	/// Cartões amarelos.
+	measure 'Cartões Amarelos' = ```
+			CALCULATE ( COUNTROWS ( fCartoes ), KEEPFILTERS ( fCartoes[Cartao] = "Amarelo" ) )
+			```
+		formatString: #,0
+		displayFolder: 05. Disciplina
+
+	/// Cartões vermelhos.
+	measure 'Cartões Vermelhos' = ```
+			CALCULATE ( COUNTROWS ( fCartoes ), KEEPFILTERS ( fCartoes[Cartao] = "Vermelho" ) )
+			```
+		formatString: #,0
+		displayFolder: 05. Disciplina
+
+	/// Cartões do clube por jogo, contando só temporadas com cartões registrados e respeitando filtros de mando e resultado.
+	measure 'Cartões por Jogo' = ```
+			VAR __partidas = VALUES ( fDesempenho[PartidaId] )
+			VAR __Cartoes = CALCULATE ( [Cartões], TREATAS ( __partidas, fCartoes[PartidaId] ) )
+			VAR __temporadasComCartoes =
+			    CALCULATETABLE ( SUMMARIZE ( fCartoes, dPartida[Temporada] ), REMOVEFILTERS ( dClube ) )
+			VAR __Jogos = CALCULATE ( [Jogos], KEEPFILTERS ( __temporadasComCartoes ) )
+			RETURN
+			    DIVIDE ( __Cartoes, __Jogos )
+			```
+		formatString: 0.00
+		displayFolder: 05. Disciplina
+
+	/// Finalizações (vazio nas temporadas sem coleta).
+	measure Chutes = ```
+			SUM ( fDesempenho[Chutes] )
+			```
+		formatString: #,0
+		displayFolder: 06. Estilo de Jogo
+
+	/// Finalizações no alvo.
+	measure 'Chutes no Alvo' = ```
+			SUM ( fDesempenho[ChutesNoAlvo] )
+			```
+		formatString: #,0
+		displayFolder: 06. Estilo de Jogo
+
+	/// Chutes no alvo sobre o total de chutes.
+	measure '% Chutes no Alvo' = ```
+			DIVIDE ( [Chutes no Alvo], [Chutes] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Gols pró sobre chutes, só nos jogos com estatística coletada.
+	measure 'Conversão de Chutes' = ```
+			VAR __GolsComEstatistica =
+			    CALCULATE ( [Gols Pró], KEEPFILTERS ( fDesempenho[TemEstatistica] = TRUE () ) )
+			RETURN
+			    DIVIDE ( __GolsComEstatistica, [Chutes] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Média da posse de bola por jogo (ignora jogos sem coleta).
+	measure 'Posse Média' = ```
+			AVERAGE ( fDesempenho[PossePct] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Média da precisão de passe por jogo (ignora jogos sem coleta).
+	measure 'Precisão de Passe Média' = ```
+			AVERAGE ( fDesempenho[PrecisaoPassesPct] )
+			```
+		formatString: 0.0%
+		displayFolder: 06. Estilo de Jogo
+
+	/// Mensagem para a temporada selecionada quando algum tema não tem dados (regra R7).
+	measure 'Aviso de Cobertura' = ```
+			VAR __Temporada = [Temporada Selecionada]
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( __Temporada ), BLANK (),
+			        __Temporada < 2014, "Gols, cartões e estatísticas detalhados só a partir de 2014.",
+			        __Temporada = 2014, "Estatísticas de jogo (posse, chutes, passes) indisponíveis para 2014.",
+			        __Temporada = 2024, "Estatísticas de jogo (posse, chutes, passes) indisponíveis para 2024.",
+			        __Temporada = 2025, "Cartões indisponíveis para 2025."
+			    )
+			```
+		displayFolder: 99. Técnicas
+
+	column Medidas
+		isHidden
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Medidas]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Medidas = calculated
+		mode: import
+		source =
+				SELECTCOLUMNS ( { 1 }, "Medidas", ''[Value] )
+

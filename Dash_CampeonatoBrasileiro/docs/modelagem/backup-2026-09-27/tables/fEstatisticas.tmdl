@@ -1,0 +1,146 @@
+table fEstatisticas
+	lineageTag: 6bcfbe04-a204-454d-9af5-82f4d5f9f552
+
+	column PartidaId
+		dataType: int64
+		formatString: 0
+		lineageTag: 8d0569f7-b353-49a2-894d-ec840bce2a69
+		summarizeBy: none
+		sourceColumn: PartidaId
+
+	column Rodada
+		dataType: int64
+		formatString: 0
+		lineageTag: e0dff89b-4780-4eab-b686-749cf00eccaf
+		summarizeBy: none
+		sourceColumn: Rodada
+
+	column Clube
+		dataType: string
+		lineageTag: 35d1aef4-04af-4370-a552-1c7ce1c32e2a
+		summarizeBy: none
+		sourceColumn: Clube
+
+	column Chutes
+		dataType: string
+		lineageTag: ab9ecec6-eb6e-4bfb-a0a2-21669b820186
+		summarizeBy: none
+		sourceColumn: Chutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column ChutesNoAlvo
+		dataType: string
+		lineageTag: 53d4ec15-04ae-461e-97a4-12ad4ba5821c
+		summarizeBy: none
+		sourceColumn: ChutesNoAlvo
+
+		annotation SummarizationSetBy = Automatic
+
+	column PossePct
+		dataType: double
+		formatString: 0%
+		lineageTag: e0fc994f-836c-45ee-b81f-bdf2fcabd02f
+		summarizeBy: none
+		sourceColumn: PossePct
+
+	column Passes
+		dataType: string
+		lineageTag: 262e5a07-4726-4f71-a104-a9b3b1ac8801
+		summarizeBy: none
+		sourceColumn: Passes
+
+		annotation SummarizationSetBy = Automatic
+
+	column PrecisaoPassesPct
+		dataType: double
+		formatString: 0%
+		lineageTag: 97593588-ca9a-44d2-9de8-cac689255825
+		summarizeBy: none
+		sourceColumn: PrecisaoPassesPct
+
+	column Faltas
+		dataType: string
+		lineageTag: a49c8a63-f5e3-4627-bad1-392d0d4dbff2
+		summarizeBy: none
+		sourceColumn: Faltas
+
+		annotation SummarizationSetBy = Automatic
+
+	column CartaoAmarelo
+		dataType: string
+		lineageTag: 44a58281-fe37-40f8-9ab8-807bacb57bab
+		summarizeBy: none
+		sourceColumn: CartaoAmarelo
+
+		annotation SummarizationSetBy = Automatic
+
+	column CartaoVermelho
+		dataType: string
+		lineageTag: cbc467a4-327f-48bb-9742-a8379acf9168
+		summarizeBy: none
+		sourceColumn: CartaoVermelho
+
+		annotation SummarizationSetBy = Automatic
+
+	column Impedimentos
+		dataType: string
+		lineageTag: 3b1feaa9-e3f5-4e08-bc08-1e778e909d40
+		summarizeBy: none
+		sourceColumn: Impedimentos
+
+		annotation SummarizationSetBy = Automatic
+
+	column Escanteios
+		dataType: string
+		lineageTag: 76ccba93-5b8c-41e3-81b2-5257a8e2c215
+		summarizeBy: none
+		sourceColumn: Escanteios
+
+		annotation SummarizationSetBy = Automatic
+
+	column TemEstatistica
+		dataType: boolean
+		lineageTag: 11183748-190d-4cd6-b354-40aecec9382b
+		summarizeBy: none
+		sourceColumn: TemEstatistica
+
+	partition fEstatisticas = m
+		mode: import
+		queryGroup: Fatos
+		source =
+				let
+				    Fonte = fxLerCsv("campeonato-brasileiro-estatisticas-full.csv"),
+				    ColunasRenomeadas = Table.RenameColumns(Fonte, {
+				        {"partida_id", "PartidaId"}, {"rodata", "Rodada"}, {"clube", "Clube"},
+				        {"chutes", "Chutes"}, {"chutes_no_alvo", "ChutesNoAlvo"},
+				        {"posse_de_bola", "PossePct"}, {"passes", "Passes"}, {"precisao_passes", "PrecisaoPassesPct"},
+				        {"faltas", "Faltas"}, {"cartao_amarelo", "CartaoAmarelo"}, {"cartao_vermelho", "CartaoVermelho"},
+				        {"impedimentos", "Impedimentos"}, {"escanteios", "Escanteios"}
+				    }),
+				    // "35%" vira 0,35; "None" e "" = não medido
+				    __paraPercentual = (t as nullable text) as nullable number =>
+				        if t = null or t = "" or t = "None" then null
+				        else Number.From(Text.Remove(t, "%")) / 100,
+				    PercentuaisConvertidos = Table.TransformColumns(ColunasRenomeadas, {
+				        {"PossePct", __paraPercentual, Percentage.Type},
+				        {"PrecisaoPassesPct", __paraPercentual, Percentage.Type}
+				    }),
+				    TiposDefinidos = Table.TransformColumnTypes(PercentuaisConvertidos, {
+				        {"PartidaId", Int64.Type}, {"Rodada", Int64.Type}, {"Clube", type text},
+				        {"Chutes", Int64.Type}, {"ChutesNoAlvo", Int64.Type}, {"Passes", Int64.Type},
+				        {"Faltas", Int64.Type}, {"CartaoAmarelo", Int64.Type}, {"CartaoVermelho", Int64.Type},
+				        {"Impedimentos", Int64.Type}, {"Escanteios", Int64.Type}
+				    }, "pt-BR"),
+				    // Temporadas sem coleta (2003–2014, 2024) vêm com tudo zerado: aqui zero = "não medido"
+				    __colunasContagem = {"Chutes", "ChutesNoAlvo", "Passes", "Faltas",
+				                         "CartaoAmarelo", "CartaoVermelho", "Impedimentos", "Escanteios"},
+				    ColetaMarcada = Table.AddColumn(TiposDefinidos, "TemEstatistica",
+				        each List.Sum(Record.ToList(Record.SelectFields(_, __colunasContagem))) > 0, type logical),
+				    ZerosSemColetaComoNulo = Table.ReplaceValue(ColetaMarcada, each [TemEstatistica], null,
+				        (valor, temEstatistica, novo) => if temEstatistica then valor else novo, __colunasContagem)
+				in
+				    ZerosSemColetaComoNulo
+
+	annotation PBI_ResultType = Table
+

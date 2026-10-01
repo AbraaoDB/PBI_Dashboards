@@ -1,0 +1,38 @@
+relationship eb887978-fdeb-4139-943d-fec1c89e115a
+	fromColumn: fGols.PartidaId
+	toColumn: fPartidas.PartidaId
+
+relationship c4a8f24d-a37a-47da-8143-4fb0cb7efef1
+	fromColumn: fCartoes.PartidaId
+	toColumn: fPartidas.PartidaId
+
+relationship b6872eaa-ea50-4c3f-a50b-0614ff717396
+	fromColumn: fEstatisticas.PartidaId
+	toColumn: fPartidas.PartidaId
+
+relationship 8345f57d-8df2-4e2c-adc4-3568efbb0364
+	fromColumn: fPartidas.Data
+	toColumn: dCalendario.Data
+
+relationship 51110d17-8e48-477e-93b5-548a2b9aa9f0
+	fromColumn: fGols.Clube
+	toColumn: dClube.Clube
+
+relationship d44ce500-40f8-4a82-8f46-a2b85034f30c
+	fromColumn: fCartoes.Clube
+	toColumn: dClube.Clube
+
+relationship f3b1be1e-da8c-40ea-baca-13f32e496bc5
+	fromColumn: fEstatisticas.Clube
+	toColumn: dClube.Clube
+
+relationship 4fbc70b7-76f9-408d-8ca2-b7fbbec0d3c1
+	isActive: false
+	fromColumn: fPartidas.Mandante
+	toColumn: dClube.Clube
+
+relationship 502685d0-800a-4950-bbd0-472af5b6dc38
+	isActive: false
+	fromColumn: fPartidas.Visitante
+	toColumn: dClube.Clube
+

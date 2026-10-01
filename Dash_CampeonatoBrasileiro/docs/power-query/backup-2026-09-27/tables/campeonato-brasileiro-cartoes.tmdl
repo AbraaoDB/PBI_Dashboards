@@ -1,0 +1,84 @@
+table campeonato-brasileiro-cartoes
+	lineageTag: b9dc7e94-e890-4d53-927a-7c1b9f51658b
+
+	column partida_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 8ec2feca-f50d-4dbb-bd09-b2295cd0af17
+		summarizeBy: sum
+		sourceColumn: partida_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column rodata
+		dataType: int64
+		formatString: 0
+		lineageTag: 620a36d4-81ad-4e0a-a64d-a436e146df14
+		summarizeBy: sum
+		sourceColumn: rodata
+
+		annotation SummarizationSetBy = Automatic
+
+	column clube
+		dataType: string
+		lineageTag: 30bb0769-c9ea-492c-b579-b0995d7b1428
+		summarizeBy: none
+		sourceColumn: clube
+
+		annotation SummarizationSetBy = Automatic
+
+	column cartao
+		dataType: string
+		lineageTag: 32333354-fc48-4a6d-8f2c-9a37cc5cb22a
+		summarizeBy: none
+		sourceColumn: cartao
+
+		annotation SummarizationSetBy = Automatic
+
+	column atleta
+		dataType: string
+		lineageTag: 3afa11c3-2fde-407a-ae93-0f1ee355fa29
+		summarizeBy: none
+		sourceColumn: atleta
+
+		annotation SummarizationSetBy = Automatic
+
+	column num_camisa
+		dataType: int64
+		formatString: 0
+		lineageTag: c549cbc2-60fd-4c9e-b768-7b878b24055d
+		summarizeBy: sum
+		sourceColumn: num_camisa
+
+		annotation SummarizationSetBy = Automatic
+
+	column posicao
+		dataType: string
+		lineageTag: b3b29e8a-bd65-49c6-bc47-a3fe9c5d823d
+		summarizeBy: none
+		sourceColumn: posicao
+
+		annotation SummarizationSetBy = Automatic
+
+	column minuto
+		dataType: string
+		lineageTag: 3addcf93-cd1c-40fe-b6f2-fe41d9c1cf32
+		summarizeBy: none
+		sourceColumn: minuto
+
+		annotation SummarizationSetBy = Automatic
+
+	partition campeonato-brasileiro-cartoes = m
+		mode: import
+		source =
+				let
+				    Fonte = Csv.Document(File.Contents("C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_CampeonatoBrasileiro\Data\campeonato-brasileiro-cartoes.csv"),[Delimiter=",", Columns=8, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"partida_id", Int64.Type}, {"rodata", Int64.Type}, {"clube", type text}, {"cartao", type text}, {"atleta", type text}, {"num_camisa", Int64.Type}, {"posicao", type text}, {"minuto", type text}})
+				in
+				    #"Tipo Alterado"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,103 @@
+table dCalendario
+	lineageTag: 8049c71c-0b49-4afd-972b-eadec7837dad
+	dataCategory: Time
+
+	column Data
+		dataType: dateTime
+		isKey
+		formatString: dd/mm/yyyy
+		lineageTag: ffd71162-7286-4183-a216-1b0023462da9
+		summarizeBy: none
+		sourceColumn: [Data]
+
+	column Ano
+		dataType: int64
+		formatString: 0
+		lineageTag: 083e14af-8eab-418d-a32c-7e0ec6499576
+		summarizeBy: none
+		sourceColumn: [Ano]
+
+	column NumMes
+		dataType: int64
+		formatString: 0
+		lineageTag: 00123978-d092-40aa-b7ff-0d59b3e6288c
+		summarizeBy: none
+		sourceColumn: [NumMes]
+
+	column Mes
+		dataType: string
+		lineageTag: 724c6cff-834a-4680-b72a-9ec358feb380
+		summarizeBy: none
+		sourceColumn: [Mes]
+		sortByColumn: NumMes
+
+	column NumTrimestre
+		dataType: int64
+		formatString: 0
+		lineageTag: 891083eb-e869-40db-be77-e77dd665d08b
+		summarizeBy: none
+		sourceColumn: [NumTrimestre]
+
+	column Trimestre
+		dataType: string
+		lineageTag: 376fed7e-f370-46fc-899b-179d881e24da
+		summarizeBy: none
+		sourceColumn: [Trimestre]
+		sortByColumn: NumTrimestre
+
+	column AnoMes
+		dataType: int64
+		formatString: 0
+		lineageTag: fa9f74eb-d46a-4db6-968f-4d5c253d9302
+		summarizeBy: none
+		sourceColumn: [AnoMes]
+
+	column Dia
+		dataType: int64
+		formatString: 0
+		lineageTag: 217421b8-bf44-4eed-ac0d-0074bcf196e9
+		summarizeBy: none
+		sourceColumn: [Dia]
+
+	column NumDiaSemana
+		dataType: int64
+		formatString: 0
+		lineageTag: 019a06ab-72fa-4cca-8a73-266f38a2c67a
+		summarizeBy: none
+		sourceColumn: [NumDiaSemana]
+
+	column DiaSemana
+		dataType: string
+		lineageTag: 59f91679-18a0-421c-a619-3168d3eb2acf
+		summarizeBy: none
+		sourceColumn: [DiaSemana]
+		sortByColumn: NumDiaSemana
+
+	partition dCalendario = calculated
+		mode: import
+		source =
+				SELECTCOLUMNS(
+				    ADDCOLUMNS(
+				        CALENDAR( DATE(1980,1,1), DATE(2026,12,31) ),
+				        "@Ano",          YEAR([Date]),
+				        "@NumMes",       MONTH([Date]),
+				        "@Mes",          FORMAT([Date], "mmm"),
+				        "@NumTrimestre", QUARTER([Date]),
+				        "@Trimestre",    "T" & QUARTER([Date]),
+				        "@AnoMes",       YEAR([Date]) * 100 + MONTH([Date]),
+				        "@Dia",          DAY([Date]),
+				        "@NumDiaSemana", WEEKDAY([Date], 2),
+				        "@DiaSemana",    FORMAT([Date], "ddd")
+				    ),
+				    "Data",         [Date],
+				    "Ano",          [@Ano],
+				    "NumMes",       [@NumMes],
+				    "Mes",          [@Mes],
+				    "NumTrimestre", [@NumTrimestre],
+				    "Trimestre",    [@Trimestre],
+				    "AnoMes",       [@AnoMes],
+				    "Dia",          [@Dia],
+				    "NumDiaSemana", [@NumDiaSemana],
+				    "DiaSemana",    [@DiaSemana]
+				)
+

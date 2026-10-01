@@ -1,0 +1,40 @@
+table dAtleta
+	lineageTag: fd7d283c-1f51-43db-8462-a9a3e7335d35
+
+	column Atleta
+		dataType: string
+		lineageTag: 38ff530b-9685-4216-a966-59878be357a0
+		summarizeBy: none
+		sourceColumn: Atleta
+
+	column Posicao
+		dataType: string
+		lineageTag: c5354bb3-6337-457b-9840-8da7d3a96c6a
+		summarizeBy: none
+		sourceColumn: Posicao
+
+	partition dAtleta = m
+		mode: import
+		queryGroup: Dimensões
+		source =
+				// Atletas citados em gols ou cartões. O nome é a chave: a fonte não tem ID, então homônimos somam juntos.
+				let
+				    AtletasGols = Table.SelectColumns(fGols, {"Atleta"}),
+				    AtletasCartoes = Table.SelectColumns(fCartoes, {"Atleta"}),
+				    Combinados = Table.Combine({AtletasGols, AtletasCartoes}),
+				    SemVazios = Table.SelectRows(Combinados, each [Atleta] <> null and [Atleta] <> ""),
+				    // Sem diferenciar maiúsculas: o relacionamento do Power BI também não diferencia
+				    AtletasUnicos = Table.Distinct(SemVazios, {"Atleta", Comparer.OrdinalIgnoreCase}),
+				    // Posição mais frequente do atleta nos registros de cartão
+				    __posicoes = Table.SelectRows(Table.SelectColumns(fCartoes, {"Atleta", "Posicao"}), each [Posicao] <> null),
+				    PosicaoPrincipal = Table.Group(__posicoes, {"Atleta"}, {{"Posicao",
+				        each Table.Max(Table.Group(_, {"Posicao"}, {{"n", Table.RowCount, Int64.Type}}), "n")[Posicao], type text}}),
+				    PosicaoMesclada = Table.NestedJoin(AtletasUnicos, {"Atleta"}, PosicaoPrincipal, {"Atleta"}, "P", JoinKind.LeftOuter),
+				    PosicaoExpandida = Table.ExpandTableColumn(PosicaoMesclada, "P", {"Posicao"}),
+				    PosicaoPadrao = Table.ReplaceValue(PosicaoExpandida, null, "Não informada", Replacer.ReplaceValue, {"Posicao"}),
+				    // Garante chave única depois do merge
+				    ChaveUnica = Table.Distinct(PosicaoPadrao, {"Atleta", Comparer.OrdinalIgnoreCase}),
+				    TiposDefinidos = Table.TransformColumnTypes(ChaveUnica, {{"Atleta", type text}, {"Posicao", type text}})
+				in
+				    TiposDefinidos
+

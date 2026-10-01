@@ -1,0 +1,234 @@
+table fStreamingCatalog
+	lineageTag: 5e86dc96-bb19-4136-904f-5bed31d506c0
+
+	column show_id
+		dataType: string
+		lineageTag: 332c8c97-ad77-4cc4-ac09-f827ccddaf4c
+		summarizeBy: none
+		sourceColumn: show_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column title
+		dataType: string
+		lineageTag: 690dd9b8-48ac-48dd-8ab4-7c4edc6a8927
+		summarizeBy: none
+		sourceColumn: title
+
+		annotation SummarizationSetBy = Automatic
+
+	column type
+		dataType: string
+		isHidden
+		lineageTag: 9436b031-1096-4dd1-93a9-dc7282ed2350
+		summarizeBy: none
+		sourceColumn: type
+
+		annotation SummarizationSetBy = Automatic
+
+	column platform
+		dataType: string
+		isHidden
+		lineageTag: 883adfe6-5512-4fc8-9b35-2747c47ae08d
+		summarizeBy: none
+		sourceColumn: platform
+
+		annotation SummarizationSetBy = Automatic
+
+	column primary_genre
+		dataType: string
+		isHidden
+		lineageTag: 19ab000e-25fa-4b00-95bd-8d9260273237
+		summarizeBy: none
+		sourceColumn: primary_genre
+
+		annotation SummarizationSetBy = Automatic
+
+	column genres
+		dataType: string
+		lineageTag: f89cd01f-d125-4c11-9be2-f69321a77ec7
+		summarizeBy: none
+		sourceColumn: genres
+
+		annotation SummarizationSetBy = Automatic
+
+	column director
+		dataType: string
+		lineageTag: 4d822fe7-a628-45bc-a01f-1b2f550fc39d
+		summarizeBy: none
+		sourceColumn: director
+
+		annotation SummarizationSetBy = Automatic
+
+	column cast
+		dataType: string
+		lineageTag: 1b9ec71b-5307-435d-8a44-adbd93347c7e
+		summarizeBy: none
+		sourceColumn: cast
+
+		annotation SummarizationSetBy = Automatic
+
+	column country
+		dataType: string
+		isHidden
+		lineageTag: 0b3fdca9-6b8a-401b-b085-a51d6da667d4
+		summarizeBy: none
+		sourceColumn: country
+
+		annotation SummarizationSetBy = Automatic
+
+	column language
+		dataType: string
+		lineageTag: 401c1ed6-402b-4887-a7bc-f920a21e707f
+		summarizeBy: none
+		sourceColumn: language
+
+		annotation SummarizationSetBy = Automatic
+
+	column release_year
+		dataType: int64
+		formatString: 0
+		lineageTag: 9bc4cfa7-4728-4921-acdd-3204fabf7f08
+		summarizeBy: none
+		sourceColumn: release_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column date_added
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: 8b8d30be-f899-4a56-afac-26169d0f6d4a
+		summarizeBy: none
+		sourceColumn: date_added
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column rating
+		dataType: string
+		isHidden
+		lineageTag: 7feeacce-b6ed-4e32-82a6-7adeccc0732f
+		summarizeBy: none
+		sourceColumn: rating
+
+		annotation SummarizationSetBy = Automatic
+
+	column duration
+		dataType: string
+		lineageTag: aea0a5e3-95ce-4883-8251-6969c62f8ed9
+		summarizeBy: none
+		sourceColumn: duration
+
+		annotation SummarizationSetBy = Automatic
+
+	column duration_minutes
+		dataType: int64
+		formatString: 0
+		lineageTag: bf6e4f15-7209-4608-b794-84be687ac346
+		summarizeBy: sum
+		sourceColumn: duration_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column num_seasons
+		dataType: int64
+		formatString: 0
+		lineageTag: 4b558e87-8d7d-49a6-a0b1-65ab87f04c65
+		summarizeBy: sum
+		sourceColumn: num_seasons
+
+		annotation SummarizationSetBy = Automatic
+
+	column num_episodes
+		dataType: int64
+		formatString: 0
+		lineageTag: b8e552c9-d19f-462a-b6a5-2073f666a1fb
+		summarizeBy: sum
+		sourceColumn: num_episodes
+
+		annotation SummarizationSetBy = Automatic
+
+	column imdb_rating
+		dataType: double
+		lineageTag: de45ac55-06d4-41f2-9c55-26a066f87a7a
+		summarizeBy: none
+		sourceColumn: imdb_rating
+
+		annotation SummarizationSetBy = Automatic
+
+	column rotten_tomatoes_score
+		dataType: double
+		lineageTag: 36c47742-a0f9-46cf-97d8-4f97d0c8dcac
+		summarizeBy: none
+		sourceColumn: rotten_tomatoes_score
+
+		annotation SummarizationSetBy = Automatic
+
+	column imdb_votes
+		dataType: int64
+		formatString: 0
+		lineageTag: b41e213c-b120-4588-ad9f-598e818305a5
+		summarizeBy: sum
+		sourceColumn: imdb_votes
+
+		annotation SummarizationSetBy = Automatic
+
+	column budget_million_usd
+		dataType: double
+		formatString: #,0.0
+		lineageTag: 1d1a246b-9be8-42c9-a404-57972f80f193
+		summarizeBy: sum
+		sourceColumn: budget_million_usd
+
+		annotation SummarizationSetBy = Automatic
+
+	column production_company
+		dataType: string
+		lineageTag: ed0aecbd-3167-4dec-8fd8-fbe1a9244a09
+		summarizeBy: none
+		sourceColumn: production_company
+
+		annotation SummarizationSetBy = Automatic
+
+	column awards_won
+		dataType: int64
+		formatString: 0
+		lineageTag: 623e0351-0408-4d13-b8ce-87151529efe8
+		summarizeBy: sum
+		sourceColumn: awards_won
+
+		annotation SummarizationSetBy = Automatic
+
+	column hours_watched_million
+		dataType: double
+		lineageTag: d9d0ef9d-803e-464a-8209-b860e84d70d1
+		summarizeBy: sum
+		sourceColumn: hours_watched_million
+
+		annotation SummarizationSetBy = Automatic
+
+	column description
+		dataType: string
+		lineageTag: 782ba58b-39a1-4801-a612-981a7ad1d9d3
+		summarizeBy: none
+		sourceColumn: description
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fStreamingCatalog = m
+		mode: import
+		source =
+				let
+				    fonteCsv = Csv.Document(File.Contents(caminhoDados & "streaming_catalog.csv"),[Delimiter=",", Columns=25, Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+				    cabecalhosPromovidos = Table.PromoteHeaders(fonteCsv, [PromoteAllScalars=true]),
+				    // CSV em padrão en-US (ponto decimal): sem a cultura explícita o modelo pt-BR lê 6.3 como 63
+				    tiposAplicados = Table.TransformColumnTypes(cabecalhosPromovidos,{{"show_id", type text}, {"title", type text}, {"type", type text}, {"platform", type text}, {"primary_genre", type text}, {"genres", type text}, {"director", type text}, {"cast", type text}, {"country", type text}, {"language", type text}, {"release_year", Int64.Type}, {"date_added", type date}, {"rating", type text}, {"duration", type text}, {"duration_minutes", Int64.Type}, {"num_seasons", Int64.Type}, {"num_episodes", Int64.Type}, {"imdb_rating", type number}, {"rotten_tomatoes_score", type number}, {"imdb_votes", Int64.Type}, {"budget_million_usd", type number}, {"production_company", type text}, {"awards_won", Int64.Type}, {"hours_watched_million", type number}, {"description", type text}}, "en-US")
+				in
+				    tiposAplicados
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

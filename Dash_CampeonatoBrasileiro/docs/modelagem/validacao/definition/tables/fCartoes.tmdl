@@ -1,0 +1,105 @@
+table fCartoes
+	lineageTag: b9dc7e94-e890-4d53-927a-7c1b9f51658b
+
+	column PartidaId
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 8ec2feca-f50d-4dbb-bd09-b2295cd0af17
+		summarizeBy: none
+		sourceColumn: PartidaId
+
+	column Data
+		dataType: dateTime
+		isHidden
+		formatString: dd/MM/yyyy
+		summarizeBy: none
+		sourceColumn: Data
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Clube
+		dataType: string
+		isHidden
+		lineageTag: 30bb0769-c9ea-492c-b579-b0995d7b1428
+		summarizeBy: none
+		sourceColumn: Clube
+
+	column Cartao
+		dataType: string
+		lineageTag: 32333354-fc48-4a6d-8f2c-9a37cc5cb22a
+		summarizeBy: none
+		sourceColumn: Cartao
+
+	column Atleta
+		dataType: string
+		lineageTag: 3afa11c3-2fde-407a-ae93-0f1ee355fa29
+		summarizeBy: none
+		sourceColumn: Atleta
+
+	column NumeroCamisa
+		dataType: int64
+		formatString: 0
+		lineageTag: c549cbc2-60fd-4c9e-b768-7b878b24055d
+		summarizeBy: none
+		sourceColumn: NumeroCamisa
+
+	column Posicao
+		dataType: string
+		lineageTag: b3b29e8a-bd65-49c6-bc47-a3fe9c5d823d
+		summarizeBy: none
+		sourceColumn: Posicao
+
+	column MinutoTexto
+		dataType: string
+		lineageTag: 3addcf93-cd1c-40fe-b6f2-fe41d9c1cf32
+		summarizeBy: none
+		sourceColumn: MinutoTexto
+
+	column Minuto
+		dataType: int64
+		formatString: 0
+		lineageTag: 32f99892-560e-403f-91f5-a4524d67aff9
+		summarizeBy: none
+		sourceColumn: Minuto
+
+	column Acrescimo
+		dataType: int64
+		formatString: 0
+		lineageTag: a2e69657-71e3-4f2b-8c88-7e5b5282275d
+		summarizeBy: none
+		sourceColumn: Acrescimo
+
+	partition fCartoes = m
+		mode: import
+		queryGroup: Fatos
+		source =
+				let
+				    Fonte = fxLerCsv("campeonato-brasileiro-cartoes.csv"),
+				    ColunasRenomeadas = Table.RenameColumns(Fonte, {
+				        {"partida_id", "PartidaId"}, {"clube", "Clube"}, {"cartao", "Cartao"},
+				        {"atleta", "Atleta"}, {"num_camisa", "NumeroCamisa"}, {"posicao", "Posicao"}, {"minuto", "MinutoTexto"}
+				    }),
+				    // Rodada já está em dPartida
+				    RodadaRemovida = Table.RemoveColumns(ColunasRenomeadas, {"rodata"}),
+				    VaziosComoNulo = Table.ReplaceValue(RodadaRemovida, "", null, Replacer.ReplaceValue,
+				        {"Atleta", "NumeroCamisa", "Posicao"}),
+				    // Fonte grafa "Zagueira" em 22 linhas: mesma posição
+				    PosicaoPadronizada = Table.ReplaceValue(VaziosComoNulo, "Zagueira", "Zagueiro", Replacer.ReplaceValue, {"Posicao"}),
+				    TiposDefinidos = Table.TransformColumnTypes(PosicaoPadronizada, {
+				        {"PartidaId", Int64.Type}, {"Clube", type text}, {"Cartao", type text},
+				        {"Atleta", type text}, {"NumeroCamisa", Int64.Type}, {"Posicao", type text}, {"MinutoTexto", type text}
+				    }, "pt-BR"),
+				    // "90+3" = minuto 90 com 3 de acréscimo
+				    MinutoAdicionado = Table.AddColumn(TiposDefinidos, "Minuto",
+				        each Number.From(Text.Split([MinutoTexto], "+"){0}), Int64.Type),
+				    AcrescimoAdicionado = Table.AddColumn(MinutoAdicionado, "Acrescimo",
+				        each Number.From(Text.Split([MinutoTexto], "+"){1}? ?? "0"), Int64.Type),
+				    // Data da partida para ligar o fato direto ao calendário
+				    PartidaMesclada = Table.NestedJoin(AcrescimoAdicionado, {"PartidaId"},
+				        stgPartidas, {"PartidaId"}, "Partida", JoinKind.LeftOuter),
+				    DataExpandida = Table.ExpandTableColumn(PartidaMesclada, "Partida", {"Data"}),
+				    DataTipada = Table.TransformColumnTypes(DataExpandida, {{"Data", type date}})
+				in
+				    DataTipada
+

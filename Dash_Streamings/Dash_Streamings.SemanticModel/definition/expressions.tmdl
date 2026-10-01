@@ -1,0 +1,7 @@
+expression caminhoDados = "C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_Streamings\Data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: a1b2c3d4-0000-0000-0000-000000000001
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Text
+

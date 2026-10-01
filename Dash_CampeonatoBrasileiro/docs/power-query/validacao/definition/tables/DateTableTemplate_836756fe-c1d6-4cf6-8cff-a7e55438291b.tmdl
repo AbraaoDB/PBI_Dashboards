@@ -1,0 +1,25 @@
+table dClube
+
+	column Clube
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Clube
+
+	column Estado
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Estado
+
+	partition dClube = m
+		mode: import
+		queryGroup: Dimensões
+		source =
+				// Todo clube foi mandante ao menos uma vez: basta a lista de mandantes com o estado
+				let
+				    Fonte = fPartidas,
+				    ColunasSelecionadas = Table.SelectColumns(Fonte, {"Mandante", "EstadoMandante"}),
+				    ColunasRenomeadas = Table.RenameColumns(ColunasSelecionadas, {{"Mandante", "Clube"}, {"EstadoMandante", "Estado"}}),
+				    ClubesUnicos = Table.Distinct(ColunasRenomeadas, {"Clube"})
+				in
+				    ClubesUnicos
+

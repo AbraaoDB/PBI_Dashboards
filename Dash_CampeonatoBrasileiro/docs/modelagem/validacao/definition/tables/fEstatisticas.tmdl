@@ -1,0 +1,190 @@
+table fDesempenho
+
+	column PartidaId
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: PartidaId
+
+	column Data
+		dataType: dateTime
+		isHidden
+		formatString: dd/MM/yyyy
+		summarizeBy: none
+		sourceColumn: Data
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Clube
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Clube
+
+	column Adversario
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Adversario
+
+	column Mando
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Mando
+
+	column GolsPro
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: GolsPro
+
+	column GolsContra
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: GolsContra
+
+	column Resultado
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Resultado
+
+	column Pontos
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Pontos
+
+	column Formacao
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Formacao
+
+	column Tecnico
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Tecnico
+
+	column Arrecadacao
+		dataType: decimal
+		formatString: "R$"\ #,0
+		summarizeBy: sum
+		sourceColumn: Arrecadacao
+
+	column Chutes
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Chutes
+
+	column ChutesNoAlvo
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: ChutesNoAlvo
+
+	column PossePct
+		dataType: double
+		formatString: 0%
+		summarizeBy: none
+		sourceColumn: PossePct
+
+	column Passes
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Passes
+
+	column PrecisaoPassesPct
+		dataType: double
+		formatString: 0%
+		summarizeBy: none
+		sourceColumn: PrecisaoPassesPct
+
+	column Faltas
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Faltas
+
+	column CartaoAmarelo
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: CartaoAmarelo
+
+	column CartaoVermelho
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: CartaoVermelho
+
+	column Impedimentos
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Impedimentos
+
+	column Escanteios
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Escanteios
+
+	column TemEstatistica
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: TemEstatistica
+
+	partition fDesempenho = m
+		mode: import
+		queryGroup: Fatos
+		source =
+				// Grão: um clube em uma partida (2 linhas por jogo). Junta resultado e estatísticas.
+				let
+				    Fonte = stgPartidas,
+				    // Linha do mandante
+				    CasaSelecionada = Table.SelectColumns(Fonte, {"PartidaId", "Data", "Mandante", "Visitante",
+				        "PlacarMandante", "PlacarVisitante", "FormacaoMandante", "TecnicoMandante", "Arrecadacao"}),
+				    CasaRenomeada = Table.RenameColumns(CasaSelecionada, {
+				        {"Mandante", "Clube"}, {"Visitante", "Adversario"},
+				        {"PlacarMandante", "GolsPro"}, {"PlacarVisitante", "GolsContra"},
+				        {"FormacaoMandante", "Formacao"}, {"TecnicoMandante", "Tecnico"}}),
+				    CasaMarcada = Table.AddColumn(CasaRenomeada, "Mando", each "Casa", type text),
+				    // Linha do visitante; arrecadação é receita do mandante, fica vazia aqui para não somar em dobro
+				    ForaSelecionada = Table.SelectColumns(Fonte, {"PartidaId", "Data", "Visitante", "Mandante",
+				        "PlacarVisitante", "PlacarMandante", "FormacaoVisitante", "TecnicoVisitante"}),
+				    ForaRenomeada = Table.RenameColumns(ForaSelecionada, {
+				        {"Visitante", "Clube"}, {"Mandante", "Adversario"},
+				        {"PlacarVisitante", "GolsPro"}, {"PlacarMandante", "GolsContra"},
+				        {"FormacaoVisitante", "Formacao"}, {"TecnicoVisitante", "Tecnico"}}),
+				    ForaSemArrecadacao = Table.AddColumn(ForaRenomeada, "Arrecadacao", each null, Currency.Type),
+				    ForaMarcada = Table.AddColumn(ForaSemArrecadacao, "Mando", each "Fora", type text),
+				    ClubesPorPartida = Table.Combine({CasaMarcada, ForaMarcada}),
+				    ResultadoAdicionado = Table.AddColumn(ClubesPorPartida, "Resultado",
+				        each if [GolsPro] > [GolsContra] then "Vitória"
+				             else if [GolsPro] = [GolsContra] then "Empate"
+				             else "Derrota", type text),
+				    PontosAdicionados = Table.AddColumn(ResultadoAdicionado, "Pontos",
+				        each if [GolsPro] > [GolsContra] then 3 else if [GolsPro] = [GolsContra] then 1 else 0,
+				        Int64.Type),
+				    // Estatísticas no mesmo grão (partida + clube): 2 linhas por jogo em 100% das partidas
+				    __colunasEstatisticas = {"Chutes", "ChutesNoAlvo", "PossePct", "Passes", "PrecisaoPassesPct",
+				        "Faltas", "CartaoAmarelo", "CartaoVermelho", "Impedimentos", "Escanteios", "TemEstatistica"},
+				    EstatisticasMescladas = Table.NestedJoin(PontosAdicionados, {"PartidaId", "Clube"},
+				        stgEstatisticas, {"PartidaId", "Clube"}, "Estatisticas", JoinKind.LeftOuter),
+				    EstatisticasExpandidas = Table.ExpandTableColumn(EstatisticasMescladas, "Estatisticas",
+				        __colunasEstatisticas),
+				    TiposDefinidos = Table.TransformColumnTypes(EstatisticasExpandidas, {
+				        {"PartidaId", Int64.Type}, {"Data", type date}, {"Clube", type text}, {"Adversario", type text},
+				        {"Mando", type text}, {"GolsPro", Int64.Type}, {"GolsContra", Int64.Type},
+				        {"Resultado", type text}, {"Pontos", Int64.Type},
+				        {"Formacao", type text}, {"Tecnico", type text}, {"Arrecadacao", Currency.Type},
+				        {"Chutes", Int64.Type}, {"ChutesNoAlvo", Int64.Type}, {"PossePct", Percentage.Type},
+				        {"Passes", Int64.Type}, {"PrecisaoPassesPct", Percentage.Type}, {"Faltas", Int64.Type},
+				        {"CartaoAmarelo", Int64.Type}, {"CartaoVermelho", Int64.Type},
+				        {"Impedimentos", Int64.Type}, {"Escanteios", Int64.Type}, {"TemEstatistica", type logical}
+				    })
+				in
+				    TiposDefinidos
+

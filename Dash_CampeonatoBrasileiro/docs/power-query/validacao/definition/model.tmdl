@@ -1,0 +1,32 @@
+model Model
+	culture: pt-BR
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: pt-BR
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+queryGroup Parâmetros
+
+queryGroup Funções
+
+queryGroup Fatos
+
+queryGroup Dimensões
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["caminhoPasta","fxLerCsv","fPartidas","fGols","fCartoes","fEstatisticas","dClube","dCalendario"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table fPartidas
+ref table fGols
+ref table fCartoes
+ref table fEstatisticas
+ref table dClube
+ref table dCalendario
+
+ref cultureInfo pt-BR
+

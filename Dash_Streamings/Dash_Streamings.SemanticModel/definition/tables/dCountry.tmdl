@@ -1,0 +1,21 @@
+table dCountry
+	lineageTag: 2856e8c2-71ab-4cfd-a782-278bb344def7
+
+	column Pais
+		dataType: string
+		lineageTag: aa806c8a-5d94-4a43-9a1c-5be8bfad20ff
+		summarizeBy: none
+		sourceColumn: Pais
+
+	partition dCountry = m
+		mode: import
+		source =
+				let
+				    fonte = fStreamingCatalog,
+				    somenteColuna = Table.SelectColumns(fonte, {"country"}),
+				    distintos = Table.Distinct(somenteColuna),
+				    naoVazios = Table.SelectRows(distintos, each [country] <> null and [country] <> ""),
+				    renomeado = Table.RenameColumns(naoVazios, {{"country", "Pais"}})
+				in
+				    renomeado
+

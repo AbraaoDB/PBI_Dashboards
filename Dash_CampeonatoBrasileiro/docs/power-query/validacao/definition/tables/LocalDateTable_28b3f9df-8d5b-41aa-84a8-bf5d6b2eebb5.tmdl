@@ -1,0 +1,76 @@
+table dCalendario
+	dataCategory: Time
+
+	column Data
+		isKey
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		summarizeBy: none
+		sourceColumn: Data
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Ano
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Ano
+
+	column MesNumero
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: MesNumero
+
+	column MesNome
+		dataType: string
+		sortByColumn: MesNumero
+		summarizeBy: none
+		sourceColumn: MesNome
+
+	column DiaSemanaNumero
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: DiaSemanaNumero
+
+	column DiaSemanaNome
+		dataType: string
+		sortByColumn: DiaSemanaNumero
+		summarizeBy: none
+		sourceColumn: DiaSemanaNome
+
+	column Temporada
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Temporada
+
+	partition dCalendario = m
+		mode: import
+		queryGroup: Dimensões
+		source =
+				// Calendário contínuo de 1º/jan do primeiro ano a 31/dez do último ano com jogos
+				let
+				    __datas = fPartidas[Data],
+				    __inicio = #date(Date.Year(List.Min(__datas)), 1, 1),
+				    __fim = #date(Date.Year(List.Max(__datas)), 12, 31),
+				    ListaDatas = List.Dates(__inicio, Duration.Days(__fim - __inicio) + 1, #duration(1, 0, 0, 0)),
+				    TabelaDatas = Table.FromList(ListaDatas, Splitter.SplitByNothing(), type table [Data = date]),
+				    AnoAdicionado = Table.AddColumn(TabelaDatas, "Ano", each Date.Year([Data]), Int64.Type),
+				    MesNumeroAdicionado = Table.AddColumn(AnoAdicionado, "MesNumero", each Date.Month([Data]), Int64.Type),
+				    MesNomeAdicionado = Table.AddColumn(MesNumeroAdicionado, "MesNome",
+				        each Text.Proper(Date.MonthName([Data], "pt-BR")), type text),
+				    DiaSemanaNumeroAdicionado = Table.AddColumn(MesNomeAdicionado, "DiaSemanaNumero",
+				        each Date.DayOfWeek([Data], Day.Monday) + 1, Int64.Type),
+				    DiaSemanaNomeAdicionado = Table.AddColumn(DiaSemanaNumeroAdicionado, "DiaSemanaNome",
+				        each Text.Proper(Date.DayOfWeekName([Data], "pt-BR")), type text),
+				    // Temporada 2020 (pandemia) terminou em fev/2021: jan–abr/2021 pertencem à temporada 2020
+				    TemporadaAdicionada = Table.AddColumn(DiaSemanaNomeAdicionado, "Temporada",
+				        each if Date.Year([Data]) = 2021 and Date.Month([Data]) < 5 then 2020 else Date.Year([Data]),
+				        Int64.Type)
+				in
+				    TemporadaAdicionada
+

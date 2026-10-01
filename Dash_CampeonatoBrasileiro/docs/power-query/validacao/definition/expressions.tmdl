@@ -1,0 +1,17 @@
+expression caminhoPasta = "C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_CampeonatoBrasileiro\Data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	queryGroup: Parâmetros
+
+expression fxLerCsv =
+		// Lê um CSV da pasta do projeto: UTF-8, aspas respeitadas, cabeçalho promovido.
+		// Centraliza encoding e QuoteStyle para as 4 fontes ficarem iguais.
+		(nomeArquivo as text) as table =>
+		let
+		    Fonte = Csv.Document(
+		        File.Contents(caminhoPasta & nomeArquivo),
+		        [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+		    ),
+		    CabecalhosPromovidos = Table.PromoteHeaders(Fonte, [PromoteAllScalars = true])
+		in
+		    CabecalhosPromovidos
+	queryGroup: Funções
+

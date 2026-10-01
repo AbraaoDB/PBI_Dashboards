@@ -1,0 +1,58 @@
+// Validação das medidas — rodar no DAX Query View do Desktop (ou pelo MCP) após Atualizar.
+// Valores esperados calculados em Python sobre os CSVs de origem (27/09/2026).
+
+// 1) Classificação 2023 — esperado: Palmeiras 1º (70 pts, 20 V, saldo +31), Grêmio 2º (68);
+//    Rebaixados: Santos, Goias, Coritiba, America-MG; Flamengo 4º, aproveitamento 57,9%
+EVALUATE
+SUMMARIZECOLUMNS (
+    dClube[Clube],
+    TREATAS ( { 2023 }, dPartida[Temporada] ),
+    "Posição", [Posição],
+    "Pontos", [Pontos],
+    "Vitórias", [Vitórias],
+    "Saldo", [Saldo de Gols],
+    "Aproveitamento", [Aproveitamento %],
+    "Zona", [Zona]
+)
+ORDER BY [Posição]
+
+// 2) Indicadores de liga — esperado: 2008 mandante 54,7%; 2010 empates 31,1%; 2025 gols/jogo 2,52;
+//    campeão 2019 Flamengo; artilheiro 2023 "Paulinho (21)"; cartões por jogo 2023 ≈ 2,79; posse média 2023 = 50%
+EVALUATE
+SUMMARIZECOLUMNS (
+    dPartida[Temporada],
+    "Partidas", [Partidas (Liga)],
+    "Gols por Jogo", [Gols por Jogo (Liga)],
+    "% Mandante", [% Vitórias do Mandante],
+    "% Empates", [% Empates],
+    "Campeão", [Campeão],
+    "Artilheiro", [Artilheiro],
+    "Cartões por Jogo", [Cartões por Jogo],
+    "Posse Média", [Posse Média],
+    "Aviso", [Aviso de Cobertura]
+)
+ORDER BY dPartida[Temporada]
+
+// 3) Evolução — esperado na rodada 19 de 2023: Botafogo-RJ 1º com 47 pontos
+EVALUATE
+SUMMARIZECOLUMNS (
+    dClube[Clube],
+    TREATAS ( { 2023 }, dPartida[Temporada] ),
+    TREATAS ( { 19 }, dPartida[Rodada] ),
+    "Pontos Acumulados", [Pontos Acumulados],
+    "Posição na Rodada", [Posição na Rodada]
+)
+ORDER BY [Posição na Rodada]
+
+// 4) Gols do Flamengo em 2023 por faixa de minuto — marcados × sofridos
+EVALUATE
+SUMMARIZECOLUMNS (
+    fGols[FaixaMinutoOrdem],
+    fGols[FaixaMinuto],
+    TREATAS ( { 2023 }, dPartida[Temporada] ),
+    TREATAS ( { "Flamengo" }, dClube[Clube] ),
+    "Gols", [Gols Registrados],
+    "% na Faixa", [% dos Gols na Faixa],
+    "Sofridos", [Gols Sofridos (Lances)]
+)
+ORDER BY fGols[FaixaMinutoOrdem]

@@ -1,0 +1,24 @@
+relationship fStreamingCatalog_dCalendario
+	fromColumn: fStreamingCatalog.date_added
+	toColumn: dCalendario.Data
+
+relationship fStreamingCatalog_dPlatform
+	fromColumn: fStreamingCatalog.platform
+	toColumn: dPlatform.Platform
+
+relationship fStreamingCatalog_dGenre
+	fromColumn: fStreamingCatalog.primary_genre
+	toColumn: dGenre.Genero
+
+relationship fStreamingCatalog_dCountry
+	fromColumn: fStreamingCatalog.country
+	toColumn: dCountry.Pais
+
+relationship fStreamingCatalog_dType
+	fromColumn: fStreamingCatalog.type
+	toColumn: dType.Tipo
+
+relationship fStreamingCatalog_dRating
+	fromColumn: fStreamingCatalog.rating
+	toColumn: dRating.Classificacao
+

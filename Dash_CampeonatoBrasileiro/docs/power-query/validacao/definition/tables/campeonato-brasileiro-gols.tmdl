@@ -1,0 +1,80 @@
+table fGols
+	lineageTag: 70590f63-8ecf-45d7-bb43-4b950428b18d
+
+	column PartidaId
+		dataType: int64
+		formatString: 0
+		lineageTag: d2c586de-7052-4706-bf56-ce3e0297b85d
+		summarizeBy: none
+		sourceColumn: PartidaId
+
+	column Rodada
+		dataType: int64
+		formatString: 0
+		lineageTag: 2a1d52da-734e-4e0e-bf4a-c3f28a3ccc64
+		summarizeBy: none
+		sourceColumn: Rodada
+
+	column Clube
+		dataType: string
+		lineageTag: a3f1b9a7-d689-4aef-97ea-fb5572500af2
+		summarizeBy: none
+		sourceColumn: Clube
+
+	column Atleta
+		dataType: string
+		lineageTag: 69bdecdb-135b-44c0-ac8b-5c047db67dde
+		summarizeBy: none
+		sourceColumn: Atleta
+
+	column MinutoTexto
+		dataType: string
+		lineageTag: e081233b-b934-4e8e-b1e7-6fe58c85d943
+		summarizeBy: none
+		sourceColumn: MinutoTexto
+
+	column TipoGol
+		dataType: string
+		lineageTag: 3217677b-8582-4d76-ac76-10d4aab7656a
+		summarizeBy: none
+		sourceColumn: TipoGol
+
+	column Minuto
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Minuto
+
+	column Acrescimo
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Acrescimo
+
+	partition fGols = m
+		mode: import
+		queryGroup: Fatos
+		source =
+				let
+				    Fonte = fxLerCsv("campeonato-brasileiro-gols.csv"),
+				    ColunasRenomeadas = Table.RenameColumns(Fonte, {
+				        {"partida_id", "PartidaId"}, {"rodata", "Rodada"}, {"clube", "Clube"},
+				        {"atleta", "Atleta"}, {"minuto", "MinutoTexto"}, {"tipo_de_gol", "TipoGol"}
+				    }),
+				    VaziosComoNulo = Table.ReplaceValue(ColunasRenomeadas, "", null, Replacer.ReplaceValue, {"Atleta"}),
+				    // Tipo vazio = gol comum (só Penalty e Gol Contra vêm preenchidos)
+				    TipoGolPadronizado = Table.ReplaceValue(VaziosComoNulo, "", "Normal", Replacer.ReplaceValue, {"TipoGol"}),
+				    TiposDefinidos = Table.TransformColumnTypes(TipoGolPadronizado, {
+				        {"PartidaId", Int64.Type}, {"Rodada", Int64.Type}, {"Clube", type text},
+				        {"Atleta", type text}, {"MinutoTexto", type text}, {"TipoGol", type text}
+				    }, "pt-BR"),
+				    // "45+2" = minuto 45 com 2 de acréscimo; separado para permitir faixa de minuto e ordenação
+				    MinutoAdicionado = Table.AddColumn(TiposDefinidos, "Minuto",
+				        each Number.From(Text.Split([MinutoTexto], "+"){0}), Int64.Type),
+				    AcrescimoAdicionado = Table.AddColumn(MinutoAdicionado, "Acrescimo",
+				        each Number.From(Text.Split([MinutoTexto], "+"){1}? ?? "0"), Int64.Type)
+				in
+				    AcrescimoAdicionado
+
+	annotation PBI_ResultType = Table
+

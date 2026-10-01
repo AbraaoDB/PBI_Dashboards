@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/pagesMetadata/1.1.0/schema.json",
+  "pageOrder": [
+    "pgCapa",
+    "926615a032c9883d1b7b",
+    "pgClube",
+    "pgJogadores"
+  ],
+  "activePageName": "pgJogadores"
+}

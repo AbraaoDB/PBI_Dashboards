@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "Dash_CampeonatoBrasileiro"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "4196c243-1813-4d82-ad9a-864f01debd05"
+  }
+}

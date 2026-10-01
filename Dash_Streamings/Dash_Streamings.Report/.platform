@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "Dash_Streamings"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "3762c65a-fcf1-4734-b860-ff23d96f1fa7"
+  }
+}

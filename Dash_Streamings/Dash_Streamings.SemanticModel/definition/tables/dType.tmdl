@@ -1,0 +1,21 @@
+table dType
+	lineageTag: e797b88a-f26e-482c-b62b-9b06b1b05dea
+
+	column Tipo
+		dataType: string
+		lineageTag: f10edd96-8f36-47e5-8fd3-8de71a2cae9a
+		summarizeBy: none
+		sourceColumn: Tipo
+
+	partition dType = m
+		mode: import
+		source =
+				let
+				    fonte = fStreamingCatalog,
+				    somenteColuna = Table.SelectColumns(fonte, {"type"}),
+				    distintos = Table.Distinct(somenteColuna),
+				    naoVazios = Table.SelectRows(distintos, each [type] <> null and [type] <> ""),
+				    renomeado = Table.RenameColumns(naoVazios, {{"type", "Tipo"}})
+				in
+				    renomeado
+

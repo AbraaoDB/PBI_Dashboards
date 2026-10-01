@@ -1,0 +1,214 @@
+table fDesempenho
+	lineageTag: 3132f4ff-4118-4268-bf9a-2e5a9b54c6bf
+
+	column PartidaId
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 309db230-3c41-4337-b8ee-3509153d6452
+		summarizeBy: none
+		sourceColumn: PartidaId
+
+	column Data
+		dataType: dateTime
+		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 1e6d33b6-7b3a-4133-9807-3cda54c8abb9
+		summarizeBy: none
+		sourceColumn: Data
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Clube
+		dataType: string
+		isHidden
+		lineageTag: 7564a2ec-0684-4d6f-b5ae-1cbb9b4549d6
+		summarizeBy: none
+		sourceColumn: Clube
+
+	column Adversario
+		dataType: string
+		lineageTag: 73447638-f486-4666-8e86-4577fca0c6d9
+		summarizeBy: none
+		sourceColumn: Adversario
+
+	column Mando
+		dataType: string
+		lineageTag: 2bf50f69-59b0-421f-a83a-2e65f8505e76
+		summarizeBy: none
+		sourceColumn: Mando
+
+	column GolsPro
+		dataType: int64
+		formatString: 0
+		lineageTag: 2627d810-2c0b-46e8-b59f-4a23aaa0fce3
+		summarizeBy: sum
+		sourceColumn: GolsPro
+
+	column GolsContra
+		dataType: int64
+		formatString: 0
+		lineageTag: 29e878ae-6294-4afc-ab54-4645d16fefc0
+		summarizeBy: sum
+		sourceColumn: GolsContra
+
+	column Resultado
+		dataType: string
+		lineageTag: 29abc1b9-979d-48e5-b57a-80bfcd0d2f13
+		summarizeBy: none
+		sourceColumn: Resultado
+
+	column Pontos
+		dataType: int64
+		formatString: 0
+		lineageTag: 815c4ad2-bc51-41f9-8ec0-a302d24584c7
+		summarizeBy: sum
+		sourceColumn: Pontos
+
+	column Formacao
+		dataType: string
+		lineageTag: 205283f2-b22b-4a10-950f-9cdb51beced0
+		summarizeBy: none
+		sourceColumn: Formacao
+
+	column Tecnico
+		dataType: string
+		lineageTag: c8873413-5ea5-4663-b297-7edd691361c2
+		summarizeBy: none
+		sourceColumn: Tecnico
+
+	column Arrecadacao
+		dataType: decimal
+		formatString: "R$"\ #,0
+		lineageTag: 7c13111c-5811-470d-84d7-bd3846eefaf2
+		summarizeBy: sum
+		sourceColumn: Arrecadacao
+
+	column Chutes
+		dataType: int64
+		formatString: 0
+		lineageTag: c6f7f3cf-cb9a-4557-b4a5-9d6e4848923d
+		summarizeBy: sum
+		sourceColumn: Chutes
+
+	column ChutesNoAlvo
+		dataType: int64
+		formatString: 0
+		lineageTag: 6eddc697-d795-473f-a472-6bdaf7dcd937
+		summarizeBy: sum
+		sourceColumn: ChutesNoAlvo
+
+	column PossePct
+		dataType: double
+		formatString: 0%
+		lineageTag: db7c712c-f1ec-40b3-990c-3ca4e9df35fa
+		summarizeBy: none
+		sourceColumn: PossePct
+
+	column Passes
+		dataType: int64
+		formatString: 0
+		lineageTag: 43b418a7-847c-43ec-84bc-bf7d8821ccbd
+		summarizeBy: sum
+		sourceColumn: Passes
+
+	column PrecisaoPassesPct
+		dataType: double
+		formatString: 0%
+		lineageTag: 37e84dbe-3b9d-4114-bbe2-b153c2155306
+		summarizeBy: none
+		sourceColumn: PrecisaoPassesPct
+
+	column Faltas
+		dataType: int64
+		formatString: 0
+		lineageTag: 49d52902-9fa3-4d7d-8bf7-be4c7098b3cb
+		summarizeBy: sum
+		sourceColumn: Faltas
+
+	column CartaoAmarelo
+		dataType: int64
+		formatString: 0
+		lineageTag: cff303b7-95f0-4f0f-aed9-75dc707e0a42
+		summarizeBy: sum
+		sourceColumn: CartaoAmarelo
+
+	column CartaoVermelho
+		dataType: int64
+		formatString: 0
+		lineageTag: 4b3551d4-9f9f-4b3a-9c3c-39e6ab982731
+		summarizeBy: sum
+		sourceColumn: CartaoVermelho
+
+	column Impedimentos
+		dataType: int64
+		formatString: 0
+		lineageTag: 13ad7a9d-9be2-4a74-b3cc-6efaf56c9b8f
+		summarizeBy: sum
+		sourceColumn: Impedimentos
+
+	column Escanteios
+		dataType: int64
+		formatString: 0
+		lineageTag: 7f71930f-b468-4ca8-a818-827244873a77
+		summarizeBy: sum
+		sourceColumn: Escanteios
+
+	column TemEstatistica
+		dataType: boolean
+		lineageTag: a3dbae3b-7204-4a5e-a32f-2b99c6113224
+		summarizeBy: none
+		sourceColumn: TemEstatistica
+
+	partition fDesempenho = m
+		mode: import
+		queryGroup: Fatos
+		source =
+				// Grão: um clube em uma partida (2 linhas por jogo). Junta resultado e estatísticas.
+				let
+				    Fonte = stgPartidas,
+				    // Linha do mandante
+				    CasaSelecionada = Table.SelectColumns(Fonte, {"PartidaId", "Data", "Mandante", "Visitante",
+				        "PlacarMandante", "PlacarVisitante", "FormacaoMandante", "TecnicoMandante", "Arrecadacao"}),
+				    CasaRenomeada = Table.RenameColumns(CasaSelecionada, {
+				        {"Mandante", "Clube"}, {"Visitante", "Adversario"},
+				        {"PlacarMandante", "GolsPro"}, {"PlacarVisitante", "GolsContra"},
+				        {"FormacaoMandante", "Formacao"}, {"TecnicoMandante", "Tecnico"}}),
+				    CasaMarcada = Table.AddColumn(CasaRenomeada, "Mando", each "Casa", type text),
+				    // Linha do visitante; arrecadação é receita do mandante, fica vazia aqui para não somar em dobro
+				    ForaSelecionada = Table.SelectColumns(Fonte, {"PartidaId", "Data", "Visitante", "Mandante",
+				        "PlacarVisitante", "PlacarMandante", "FormacaoVisitante", "TecnicoVisitante"}),
+				    ForaRenomeada = Table.RenameColumns(ForaSelecionada, {
+				        {"Visitante", "Clube"}, {"Mandante", "Adversario"},
+				        {"PlacarVisitante", "GolsPro"}, {"PlacarMandante", "GolsContra"},
+				        {"FormacaoVisitante", "Formacao"}, {"TecnicoVisitante", "Tecnico"}}),
+				    ForaSemArrecadacao = Table.AddColumn(ForaRenomeada, "Arrecadacao", each null, Currency.Type),
+				    ForaMarcada = Table.AddColumn(ForaSemArrecadacao, "Mando", each "Fora", type text),
+				    ClubesPorPartida = Table.Combine({CasaMarcada, ForaMarcada}),
+				    ResultadoAdicionado = Table.AddColumn(ClubesPorPartida, "Resultado",
+				        each if [GolsPro] > [GolsContra] then "Vitória"
+				             else if [GolsPro] = [GolsContra] then "Empate"
+				             else "Derrota", type text),
+				    PontosAdicionados = Table.AddColumn(ResultadoAdicionado, "Pontos",
+				        each if [GolsPro] > [GolsContra] then 3 else if [GolsPro] = [GolsContra] then 1 else 0,
+				        Int64.Type),
+				    // Estatísticas no mesmo grão (partida + clube): 2 linhas por jogo em 100% das partidas
+				    __colunasEstatisticas = {"Chutes", "ChutesNoAlvo", "PossePct", "Passes", "PrecisaoPassesPct",
+				        "Faltas", "CartaoAmarelo", "CartaoVermelho", "Impedimentos", "Escanteios", "TemEstatistica"},
+				    EstatisticasMescladas = Table.NestedJoin(PontosAdicionados, {"PartidaId", "Clube"},
+				        stgEstatisticas, {"PartidaId", "Clube"}, "Estatisticas", JoinKind.LeftOuter),
+				    EstatisticasExpandidas = Table.ExpandTableColumn(EstatisticasMescladas, "Estatisticas",
+				        __colunasEstatisticas),
+				    TiposDefinidos = Table.TransformColumnTypes(EstatisticasExpandidas, {
+				        {"PartidaId", Int64.Type}, {"Data", type date}, {"Clube", type text}, {"Adversario", type text},
+				        {"Mando", type text}, {"GolsPro", Int64.Type}, {"GolsContra", Int64.Type},
+				        {"Resultado", type text}, {"Pontos", Int64.Type},
+				        {"Formacao", type text}, {"Tecnico", type text}, {"Arrecadacao", Currency.Type},
+				        {"Chutes", Int64.Type}, {"ChutesNoAlvo", Int64.Type}, {"PossePct", Percentage.Type},
+				        {"Passes", Int64.Type}, {"PrecisaoPassesPct", Percentage.Type}, {"Faltas", Int64.Type},
+				        {"CartaoAmarelo", Int64.Type}, {"CartaoVermelho", Int64.Type},
+				        {"Impedimentos", Int64.Type}, {"Escanteios", Int64.Type}, {"TemEstatistica", type logical}
+				    })
+				in
+				    TiposDefinidos
+

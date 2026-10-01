@@ -1,0 +1,5 @@
+relationship 4364f999-b5ea-4bf9-ac6e-2fcb761c7d15
+	joinOnDateBehavior: datePartOnly
+	fromColumn: campeonato-brasileiro-full.data
+	toColumn: LocalDateTable_28b3f9df-8d5b-41aa-84a8-bf5d6b2eebb5.Date
+

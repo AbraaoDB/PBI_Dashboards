@@ -1,0 +1,158 @@
+table fPartidas
+	lineageTag: 73d77297-b826-4063-9a51-e86866b38dd2
+
+	column PartidaId
+		dataType: int64
+		formatString: 0
+		lineageTag: ba0dd5ed-0f65-4ccb-ae67-3a652c185e7f
+		summarizeBy: none
+		sourceColumn: PartidaId
+
+	column Rodada
+		dataType: int64
+		formatString: 0
+		lineageTag: 0e34798d-f74e-4ab0-8013-c54333e48afb
+		summarizeBy: none
+		sourceColumn: Rodada
+
+	column Data
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 1fc572c0-66b5-4c3c-880f-5fdbab7a2e88
+		summarizeBy: none
+		sourceColumn: Data
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Hora
+		dataType: dateTime
+		formatString: HH:mm
+		lineageTag: 3c0cb6de-56f9-40e7-b848-200d4a561216
+		summarizeBy: none
+		sourceColumn: Hora
+
+		annotation UnderlyingDateTimeDataType = Time
+
+	column Mandante
+		dataType: string
+		lineageTag: e1910bde-dfc3-4c26-8c1d-1782f0aa93f5
+		summarizeBy: none
+		sourceColumn: Mandante
+
+	column Visitante
+		dataType: string
+		lineageTag: fed9079b-52e0-4afd-a806-b99b2aaf2207
+		summarizeBy: none
+		sourceColumn: Visitante
+
+	column FormacaoMandante
+		dataType: string
+		lineageTag: 15c32235-6ed4-4cd0-ad06-963e9634f5eb
+		summarizeBy: none
+		sourceColumn: FormacaoMandante
+
+	column FormacaoVisitante
+		dataType: string
+		lineageTag: a675f670-0b73-483f-8fa1-72d5cf4e6b58
+		summarizeBy: none
+		sourceColumn: FormacaoVisitante
+
+	column TecnicoMandante
+		dataType: string
+		lineageTag: 3b61576a-6b52-4ccb-8609-2fc125577ca9
+		summarizeBy: none
+		sourceColumn: TecnicoMandante
+
+	column TecnicoVisitante
+		dataType: string
+		lineageTag: b8dfaefc-5ed1-4b15-b3c3-c021527a9f56
+		summarizeBy: none
+		sourceColumn: TecnicoVisitante
+
+	column Vencedor
+		dataType: string
+		lineageTag: 3943a948-2329-4555-bfc0-735c1e458c01
+		summarizeBy: none
+		sourceColumn: Vencedor
+
+	column Arena
+		dataType: string
+		lineageTag: 1ac43ace-2e5e-48b9-99c8-a5f6193c306f
+		summarizeBy: none
+		sourceColumn: Arena
+
+	column PlacarMandante
+		dataType: int64
+		formatString: 0
+		lineageTag: 66157dc3-ccb1-4d42-9d2b-554ac3d2089e
+		summarizeBy: sum
+		sourceColumn: PlacarMandante
+
+	column PlacarVisitante
+		dataType: int64
+		formatString: 0
+		lineageTag: 369cefdd-5d23-4707-ad53-5586560c03ba
+		summarizeBy: sum
+		sourceColumn: PlacarVisitante
+
+	column EstadoMandante
+		dataType: string
+		lineageTag: 55e4b833-156e-46b1-8236-70d2ac680290
+		summarizeBy: none
+		sourceColumn: EstadoMandante
+
+	column EstadoVisitante
+		dataType: string
+		lineageTag: 3283020e-ca1e-4c5e-ac50-9fc5625f1aee
+		summarizeBy: none
+		sourceColumn: EstadoVisitante
+
+	column Arrecadacao
+		dataType: decimal
+		formatString: "R$"\ #,0
+		lineageTag: 4b577586-2ab8-41c0-a50c-ec7eff79b8d5
+		summarizeBy: sum
+		sourceColumn: Arrecadacao
+
+	partition fPartidas = m
+		mode: import
+		queryGroup: Fatos
+		source =
+				let
+				    Fonte = fxLerCsv("campeonato-brasileiro-full.csv"),
+				    ColunasRenomeadas = Table.RenameColumns(Fonte, {
+				        {"ID", "PartidaId"}, {"rodata", "Rodada"}, {"data", "Data"}, {"hora", "Hora"},
+				        {"mandante", "Mandante"}, {"visitante", "Visitante"},
+				        {"formacao_mandante", "FormacaoMandante"}, {"formacao_visitante", "FormacaoVisitante"},
+				        {"tecnico_mandante", "TecnicoMandante"}, {"tecnico_visitante", "TecnicoVisitante"},
+				        {"vencedor", "Vencedor"}, {"arena", "Arena"},
+				        {"mandante_Placar", "PlacarMandante"}, {"visitante_Placar", "PlacarVisitante"},
+				        {"mandante_Estado", "EstadoMandante"}, {"visitante_Estado", "EstadoVisitante"},
+				        {"arrecadacao", "Arrecadacao"}
+				    }),
+				    // CSV entrega vazio como "": vira null para não contar como valor
+				    VaziosComoNulo = Table.ReplaceValue(ColunasRenomeadas, "", null, Replacer.ReplaceValue,
+				        Table.ColumnNames(ColunasRenomeadas)),
+				    // Arena: descarta o ", Cidade" (formato de 2025) e o espaço não separável U+00A0 do início
+				    ArenaLimpa = Table.TransformColumns(VaziosComoNulo, {{"Arena",
+				        each if _ = null then null
+				             else Text.Trim(Text.Split(_, ","){0}, {" ", Character.FromNumber(160)}),
+				        type text}}),
+				    // Na fonte, "-" significa empate
+				    EmpatePadronizado = Table.ReplaceValue(ArenaLimpa, "-", "Empate", Replacer.ReplaceValue, {"Vencedor"}),
+				    // Cultura explícita: a data vem dd/MM/yyyy e não pode depender da máquina que faz o refresh
+				    TiposDefinidos = Table.TransformColumnTypes(EmpatePadronizado, {
+				        {"PartidaId", Int64.Type}, {"Rodada", Int64.Type}, {"Data", type date}, {"Hora", type time},
+				        {"Mandante", type text}, {"Visitante", type text},
+				        {"FormacaoMandante", type text}, {"FormacaoVisitante", type text},
+				        {"TecnicoMandante", type text}, {"TecnicoVisitante", type text},
+				        {"Vencedor", type text}, {"Arena", type text},
+				        {"PlacarMandante", Int64.Type}, {"PlacarVisitante", Int64.Type},
+				        {"EstadoMandante", type text}, {"EstadoVisitante", type text},
+				        {"Arrecadacao", Currency.Type}
+				    }, "pt-BR")
+				in
+				    TiposDefinidos
+
+	annotation PBI_ResultType = Table
+

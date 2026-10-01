@@ -1,0 +1,21 @@
+table dGenre
+	lineageTag: c4f6d573-dc8a-4dd0-ad81-7dacb99cb9eb
+
+	column Genero
+		dataType: string
+		lineageTag: 5a5a8a55-2c72-4f5b-8b93-efbb11013d68
+		summarizeBy: none
+		sourceColumn: Genero
+
+	partition dGenre = m
+		mode: import
+		source =
+				let
+				    fonte = fStreamingCatalog,
+				    somenteColuna = Table.SelectColumns(fonte, {"primary_genre"}),
+				    distintos = Table.Distinct(somenteColuna),
+				    naoVazios = Table.SelectRows(distintos, each [primary_genre] <> null and [primary_genre] <> ""),
+				    renomeado = Table.RenameColumns(naoVazios, {{"primary_genre", "Genero"}})
+				in
+				    renomeado
+

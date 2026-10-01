@@ -1,0 +1,28 @@
+table dClube
+	lineageTag: 822fd249-4499-4b06-b082-833ce8011b69
+
+	column Clube
+		dataType: string
+		lineageTag: 411595a3-8f31-436c-9c5e-a9021a6c34ab
+		summarizeBy: none
+		sourceColumn: Clube
+
+	column Estado
+		dataType: string
+		lineageTag: 30c9074f-f08e-4540-970f-dcd4b6a98882
+		summarizeBy: none
+		sourceColumn: Estado
+
+	partition dClube = m
+		mode: import
+		queryGroup: Dimensões
+		source =
+				// Todo clube foi mandante ao menos uma vez: basta a lista de mandantes com o estado
+				let
+				    Fonte = fPartidas,
+				    ColunasSelecionadas = Table.SelectColumns(Fonte, {"Mandante", "EstadoMandante"}),
+				    ColunasRenomeadas = Table.RenameColumns(ColunasSelecionadas, {{"Mandante", "Clube"}, {"EstadoMandante", "Estado"}}),
+				    ClubesUnicos = Table.Distinct(ColunasRenomeadas, {"Clube"})
+				in
+				    ClubesUnicos
+

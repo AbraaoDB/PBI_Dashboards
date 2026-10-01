@@ -1,0 +1,21 @@
+table dRating
+	lineageTag: 11820a3b-db62-4893-8804-e153add89e70
+
+	column Classificacao
+		dataType: string
+		lineageTag: 6730c170-d0d1-4592-b82e-8f11a80e7b86
+		summarizeBy: none
+		sourceColumn: Classificacao
+
+	partition dRating = m
+		mode: import
+		source =
+				let
+				    fonte = fStreamingCatalog,
+				    somenteColuna = Table.SelectColumns(fonte, {"rating"}),
+				    distintos = Table.Distinct(somenteColuna),
+				    naoVazios = Table.SelectRows(distintos, each [rating] <> null and [rating] <> ""),
+				    renomeado = Table.RenameColumns(naoVazios, {{"rating", "Classificacao"}})
+				in
+				    renomeado
+

@@ -1,0 +1,105 @@
+expression caminhoPasta = "C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_CampeonatoBrasileiro\Data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 0d125020-c058-46e2-8a8a-bc1622d39c5c
+	queryGroup: Parâmetros
+
+	annotation PBI_ResultType = Text
+
+expression fxLerCsv =
+		// Lê um CSV da pasta do projeto: UTF-8, aspas respeitadas, cabeçalho promovido.
+		// Centraliza encoding e QuoteStyle para as 4 fontes ficarem iguais.
+		(nomeArquivo as text) as table =>
+		let
+		    Fonte = Csv.Document(
+		        File.Contents(caminhoPasta & nomeArquivo),
+		        [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+		    ),
+		    CabecalhosPromovidos = Table.PromoteHeaders(Fonte, [PromoteAllScalars = true])
+		in
+		    CabecalhosPromovidos
+	lineageTag: 2d605e15-573e-430f-8042-c2ed0e9e77a7
+	queryGroup: Funções
+
+expression fxTemporada =
+		// Temporada do Brasileirão a que uma data pertence.
+		// Exceção: a temporada 2020 (pandemia) foi até fev/2021, então jan–abr/2021 contam como 2020.
+		(data as date) as number =>
+		    if Date.Year(data) = 2021 and Date.Month(data) < 5 then 2020 else Date.Year(data)
+	queryGroup: Funções
+
+expression stgPartidas =
+		// Staging: partidas limpas no grão de uma linha por jogo (não carrega no modelo)
+		let
+		    Fonte = fxLerCsv("campeonato-brasileiro-full.csv"),
+		    ColunasRenomeadas = Table.RenameColumns(Fonte, {
+		        {"ID", "PartidaId"}, {"rodata", "Rodada"}, {"data", "Data"}, {"hora", "Hora"},
+		        {"mandante", "Mandante"}, {"visitante", "Visitante"},
+		        {"formacao_mandante", "FormacaoMandante"}, {"formacao_visitante", "FormacaoVisitante"},
+		        {"tecnico_mandante", "TecnicoMandante"}, {"tecnico_visitante", "TecnicoVisitante"},
+		        {"vencedor", "Vencedor"}, {"arena", "Arena"},
+		        {"mandante_Placar", "PlacarMandante"}, {"visitante_Placar", "PlacarVisitante"},
+		        {"mandante_Estado", "EstadoMandante"}, {"visitante_Estado", "EstadoVisitante"},
+		        {"arrecadacao", "Arrecadacao"}
+		    }),
+		    // CSV entrega vazio como "": vira null para não contar como valor
+		    VaziosComoNulo = Table.ReplaceValue(ColunasRenomeadas, "", null, Replacer.ReplaceValue,
+		        Table.ColumnNames(ColunasRenomeadas)),
+		    // Arena: descarta o ", Cidade" (formato de 2025) e o espaço não separável U+00A0 do início
+		    ArenaLimpa = Table.TransformColumns(VaziosComoNulo, {{"Arena",
+		        each if _ = null then null
+		             else Text.Trim(Text.Split(_, ","){0}, {" ", Character.FromNumber(160)}),
+		        type text}}),
+		    // Na fonte, "-" significa empate
+		    EmpatePadronizado = Table.ReplaceValue(ArenaLimpa, "-", "Empate", Replacer.ReplaceValue, {"Vencedor"}),
+		    // Cultura explícita: a data vem dd/MM/yyyy e não pode depender da máquina que faz o refresh
+		    TiposDefinidos = Table.TransformColumnTypes(EmpatePadronizado, {
+		        {"PartidaId", Int64.Type}, {"Rodada", Int64.Type}, {"Data", type date}, {"Hora", type time},
+		        {"Mandante", type text}, {"Visitante", type text},
+		        {"FormacaoMandante", type text}, {"FormacaoVisitante", type text},
+		        {"TecnicoMandante", type text}, {"TecnicoVisitante", type text},
+		        {"Vencedor", type text}, {"Arena", type text},
+		        {"PlacarMandante", Int64.Type}, {"PlacarVisitante", Int64.Type},
+		        {"EstadoMandante", type text}, {"EstadoVisitante", type text},
+		        {"Arrecadacao", Currency.Type}
+		    }, "pt-BR")
+		in
+		    TiposDefinidos
+	queryGroup: Staging
+
+expression stgEstatisticas =
+		// Staging: estatísticas por clube e partida, mescladas em fDesempenho (não carrega no modelo)
+		let
+		    Fonte = fxLerCsv("campeonato-brasileiro-estatisticas-full.csv"),
+		    ColunasRenomeadas = Table.RenameColumns(Fonte, {
+		        {"partida_id", "PartidaId"}, {"clube", "Clube"},
+		        {"chutes", "Chutes"}, {"chutes_no_alvo", "ChutesNoAlvo"},
+		        {"posse_de_bola", "PossePct"}, {"passes", "Passes"}, {"precisao_passes", "PrecisaoPassesPct"},
+		        {"faltas", "Faltas"}, {"cartao_amarelo", "CartaoAmarelo"}, {"cartao_vermelho", "CartaoVermelho"},
+		        {"impedimentos", "Impedimentos"}, {"escanteios", "Escanteios"}
+		    }),
+		    // Rodada já está em dPartida
+		    RodadaRemovida = Table.RemoveColumns(ColunasRenomeadas, {"rodata"}),
+		    // "35%" vira 0,35; "None" e "" = não medido
+		    __paraPercentual = (t as nullable text) as nullable number =>
+		        if t = null or t = "" or t = "None" then null
+		        else Number.From(Text.Remove(t, "%")) / 100,
+		    PercentuaisConvertidos = Table.TransformColumns(RodadaRemovida, {
+		        {"PossePct", __paraPercentual, Percentage.Type},
+		        {"PrecisaoPassesPct", __paraPercentual, Percentage.Type}
+		    }),
+		    __colunasContagem = {"Chutes", "ChutesNoAlvo", "Passes", "Faltas",
+		                         "CartaoAmarelo", "CartaoVermelho", "Impedimentos", "Escanteios"},
+		    TiposDefinidos = Table.TransformColumnTypes(PercentuaisConvertidos,
+		        {{"PartidaId", Int64.Type}, {"Clube", type text}}
+		        & List.Transform(__colunasContagem, each {_, Int64.Type}), "pt-BR"),
+		    // Temporadas sem coleta (2003–2014, 2024) vêm com tudo zerado: aqui zero = "não medido"
+		    ColetaMarcada = Table.AddColumn(TiposDefinidos, "TemEstatistica",
+		        each List.Sum(Record.ToList(Record.SelectFields(_, __colunasContagem))) > 0, type logical),
+		    ZerosSemColetaComoNulo = Table.ReplaceValue(ColetaMarcada, each [TemEstatistica], null,
+		        (valor, temEstatistica, novo) => if temEstatistica then valor else novo, __colunasContagem),
+		    // O ReplaceValue com substituidor customizado descarta o tipo: retipar as contagens
+		    ContagensRetipadas = Table.TransformColumnTypes(ZerosSemColetaComoNulo,
+		        List.Transform(__colunasContagem, each {_, Int64.Type}))
+		in
+		    ContagensRetipadas
+	queryGroup: Staging
+
