@@ -15,6 +15,7 @@ Coleção de dashboards em **Power BI** que mostra a evolução do meu trabalho 
 <table>
   <tr>
     <td width="50%" valign="top">
+      <a href="Dash_Ecommerce_Sales/"><img src="Dash_Ecommerce_Sales/docs/img/visao-executiva.png" alt="Página Visão Executiva do dashboard E-Commerce Sales"></a>
       <h3><a href="Dash_Ecommerce_Sales/">🛒 E-Commerce Sales &amp; Customer Analytics</a> &nbsp;<sub>✨ mais recente</sub></h3>
       138 mil pedidos e 397 mil itens: receita realizada × perdida, margem com e sem imposto, nível de serviço de entrega, devolução e retorno por canal de marketing — em 5 páginas <i>dark mode</i> com navegação lateral fixa.<br><br>
       O diferencial não é o visual: a auditoria do ETL encontrou que o cabeçalho do pedido na fonte <b>agrega no máximo 5 itens e subconta 7,9% da receita</b>. O modelo lê o grão do item e documenta por que diverge do CSV oficial.<br>

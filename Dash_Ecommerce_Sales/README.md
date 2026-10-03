@@ -31,6 +31,16 @@ navegação fica no mesmo lugar em todas as páginas, como num aplicativo web.
 | **Operação & Qualidade** | Se a entrega cumpre a promessa; quanto a devolução custa |
 | **Cliente & Marketing** | Quem compra, por qual canal chegou e quanto custou trazer |
 
+| Capa | Visão Executiva |
+|---|---|
+| ![Capa](docs/img/capa.png) | ![Visão Executiva](docs/img/visao-executiva.png) |
+
+| Comercial & Produto | Operação & Qualidade |
+|---|---|
+| ![Comercial & Produto](docs/img/comercial-produto.png) | ![Operação & Qualidade](docs/img/operacao-qualidade.png) |
+
+![Cliente & Marketing](docs/img/cliente-marketing.png)
+
 Quatro slicers sincronizados entre as páginas (Ano, Status do pedido, Categoria, Região),
 cross-filter ativo e rodapé com procedência em todas as telas.
 
