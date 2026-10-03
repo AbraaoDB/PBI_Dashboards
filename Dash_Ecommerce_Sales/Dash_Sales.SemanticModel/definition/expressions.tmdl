@@ -1,0 +1,192 @@
+/// Pasta onde estão os CSVs de origem. Aponte para a pasta Data do repositório em cada ambiente.
+expression caminhoDados = "C:\Users\braob\OneDrive\Área de Trabalho\PBI_Dashboards\Dash_Ecommerce_Sales\Data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 27e3de33-7b1d-4928-860b-14e918e8752c
+
+	annotation PBI_ResultType = Text
+
+/// Gera uma tabela calendário contínua entre duas datas, com colunas de ordenação em pt-BR.
+expression fxGeraCalendario =
+		(dataInicial as date, dataFinal as date) as table =>
+		let
+		    __qtdDias = Duration.Days(dataFinal - dataInicial) + 1,
+		    __datas = List.Dates(dataInicial, __qtdDias, #duration(1, 0, 0, 0)),
+		    Base = Table.FromList(__datas, Splitter.SplitByNothing(), {"Data"}),
+		    Calendario = Table.AddColumn(
+		        Base,
+		        "Atributos",
+		        (linha) =>
+		            let
+		                __data = linha[Data],
+		                __ano = Date.Year(__data),
+		                __mesNum = Date.Month(__data),
+		                __trimestreNum = Date.QuarterOfYear(__data),
+		                __mesNome = Date.MonthName(__data, "pt-BR"),
+		                // Day.Monday como primeiro dia: 5 = sábado, 6 = domingo
+		                __diaSemanaSeg = Date.DayOfWeek(__data, Day.Monday)
+		            in
+		                [
+		                    Ano = __ano,
+		                    TrimestreNum = __trimestreNum,
+		                    Trimestre = "T" & Text.From(__trimestreNum),
+		                    MesNum = __mesNum,
+		                    MesNome = Text.Proper(__mesNome),
+		                    MesAbrev = Text.Proper(Text.Start(__mesNome, 3)),
+		                    AnoMesNum = __ano * 100 + __mesNum,
+		                    AnoMes = Text.From(__ano) & "-" & Text.PadStart(Text.From(__mesNum), 2, "0"),
+		                    DiaMes = Date.Day(__data),
+		                    SemanaAno = Date.WeekOfYear(__data),
+		                    DiaSemanaNum = __diaSemanaSeg + 1,
+		                    DiaSemanaNome = Text.Proper(Date.DayOfWeekName(__data, "pt-BR")),
+		                    FimDeSemana = __diaSemanaSeg >= 5
+		                ]
+		    ),
+		    Expandida = Table.ExpandRecordColumn(
+		        Calendario,
+		        "Atributos",
+		        {"Ano", "TrimestreNum", "Trimestre", "MesNum", "MesNome", "MesAbrev", "AnoMesNum", "AnoMes", "DiaMes", "SemanaAno", "DiaSemanaNum", "DiaSemanaNome", "FimDeSemana"}
+		    ),
+		    Tipada = Table.TransformColumnTypes(
+		        Expandida,
+		        {{"Data", type date}, {"Ano", Int64.Type}, {"TrimestreNum", Int64.Type}, {"Trimestre", type text}, {"MesNum", Int64.Type}, {"MesNome", type text}, {"MesAbrev", type text}, {"AnoMesNum", Int64.Type}, {"AnoMes", type text}, {"DiaMes", Int64.Type}, {"SemanaAno", Int64.Type}, {"DiaSemanaNum", Int64.Type}, {"DiaSemanaNome", type text}, {"FimDeSemana", type logical}}
+		    )
+		in
+		    Tipada
+	lineageTag: 8d11dc5e-bd8a-47bd-9701-d876dbd4ae81
+
+	annotation PBI_ResultType = Function
+
+/// Staging da fato de pedidos. Não carrega no modelo: alimenta fOrders e dCalendario.
+expression srcEcommerceSales =
+		let
+		    // QuoteStyle.Csv é obrigatório: ~8,7% das linhas têm vírgula dentro de aspas
+		    // em customer_review, o que deslocava todas as colunas seguintes
+		    Fonte = Csv.Document(File.Contents(caminhoDados & "ecommerce-sales-customer-analytics-150k.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+		    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+		    // Remove cedo: atributos de cliente que já vivem em dCliente e textos
+		    // livres de alta cardinalidade que ninguém consome
+		    #"Colunas Removidas" = Table.RemoveColumns(#"Cabeçalhos Promovidos", {"customer_name", "customer_age", "gender", "customer_segment", "customer_city", "customer_state", "customer_country", "region", "customer_postal_code", "customer_review", "campaign_name", "coupon_code"}),
+		    // A cultura "en-US" é a DA FONTE (CSV com ponto decimal); o modelo é pt-BR
+		    #"Tipos Ajustados" = Table.TransformColumnTypes(#"Colunas Removidas", {{"order_id", type text}, {"order_date", type date}, {"order_time", type time}, {"order_status", type text}, {"sales_channel", type text}, {"customer_id", type text}, {"customer_type", type text}, {"payment_method", type text}, {"payment_status", type text}, {"currency", type text}, {"shipping_method", type text}, {"warehouse", type text}, {"delivery_days", Int64.Type}, {"estimated_delivery_days", Int64.Type}, {"delivery_status", type text}, {"return_status", type text}, {"return_reason", type text}, {"customer_rating", type number}, {"review_sentiment", type text}, {"marketing_channel", type text}, {"loyalty_points_earned", Int64.Type}, {"loyalty_points_redeemed", Int64.Type}, {"quantity", Int64.Type}, {"gross_sales", Currency.Type}, {"discount_amount", Currency.Type}, {"tax_amount", Currency.Type}, {"shipping_cost", Currency.Type}, {"net_sales", Currency.Type}, {"product_cost", Currency.Type}, {"profit", Currency.Type}, {"profit_margin_percentage", type number}, {"customer_lifetime_value", Currency.Type}, {"is_repeat_customer", type logical}, {"customer_order_count", Int64.Type}}, "en-US"),
+		    // PedidoSK: chave inteira do pedido, consumida por fOrders e por fOrderItems
+		    #"Chave Pedido" = Table.AddIndexColumn(#"Tipos Ajustados", "PedidoSK", 1, 1, Int64.Type),
+		    // Troca a FK de texto por inteiro. O lookup é projetado em 2 colunas antes
+		    // do join para não arrastar a dimensão inteira no nested table.
+		    __clientes = Table.SelectColumns(srcCustomerMaster, {"customer_id", "ClienteSK"}),
+		    #"Chave Cliente" = Table.ExpandTableColumn(
+		        Table.NestedJoin(#"Chave Pedido", {"customer_id"}, __clientes, {"customer_id"}, "__cli", JoinKind.LeftOuter),
+		        "__cli", {"ClienteSK"}, {"ClienteSK"}
+		    )
+		in
+		    #"Chave Cliente"
+	lineageTag: 5c5b1189-2c13-4cde-b638-042ee1299ab8
+
+	annotation PBI_ResultType = Table
+
+/// Staging dos itens de pedido. Não carrega no modelo: alimenta fOrderItems.
+expression srcOrderItems =
+		let
+		    Fonte = Csv.Document(File.Contents(caminhoDados & "order-items.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+		    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+		    // A cultura "en-US" é a DA FONTE (CSV com ponto decimal); o modelo é pt-BR
+		    #"Tipos Ajustados" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos", {{"order_id", type text}, {"product_id", type text}, {"quantity", Int64.Type}, {"unit_price", Currency.Type}, {"discount_percentage", Percentage.Type}, {"discount_amount", Currency.Type}, {"gross_sales", Currency.Type}, {"tax_amount", Currency.Type}, {"shipping_cost", Currency.Type}, {"net_sales", Currency.Type}, {"product_cost", Currency.Type}, {"profit", Currency.Type}}, "en-US"),
+		    // Troca as FKs de texto por inteiro. Os lookups são projetados em 2 colunas
+		    // antes do join para não arrastar as tabelas inteiras no nested table.
+		    __pedidos = Table.SelectColumns(srcEcommerceSales, {"order_id", "PedidoSK"}),
+		    #"Chave Pedido" = Table.ExpandTableColumn(
+		        Table.NestedJoin(#"Tipos Ajustados", {"order_id"}, __pedidos, {"order_id"}, "__ped", JoinKind.LeftOuter),
+		        "__ped", {"PedidoSK"}, {"PedidoSK"}
+		    ),
+		    __produtos = Table.SelectColumns(srcProductCatalog, {"product_id", "ProdutoSK"}),
+		    #"Chave Produto" = Table.ExpandTableColumn(
+		        Table.NestedJoin(#"Chave Pedido", {"product_id"}, __produtos, {"product_id"}, "__prod", JoinKind.LeftOuter),
+		        "__prod", {"ProdutoSK"}, {"ProdutoSK"}
+		    )
+		in
+		    #"Chave Produto"
+	lineageTag: b3e8d656-e856-42f5-b775-6ed57ee2844a
+
+	annotation PBI_ResultType = Table
+
+/// Staging da dimensão de clientes. Não carrega no modelo: alimenta dCliente.
+expression srcCustomerMaster =
+		let
+		    Fonte = Csv.Document(File.Contents(caminhoDados & "customer-master.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+		    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+		    // customer_postal_code como texto: é identificador, não número (zeros à esquerda)
+		    // A cultura "en-US" é a DA FONTE (CSV com ponto decimal); o modelo é pt-BR
+		    #"Tipos Ajustados" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos", {{"customer_id", type text}, {"customer_name", type text}, {"customer_age", Int64.Type}, {"gender", type text}, {"customer_segment", type text}, {"customer_city", type text}, {"customer_state", type text}, {"customer_country", type text}, {"region", type text}, {"customer_postal_code", type text}, {"customer_acquisition_cost", Currency.Type}}, "en-US"),
+		    // Chave surrogada inteira: relacionamento em Int64 custa menos que em texto
+		    #"Chave Adicionada" = Table.AddIndexColumn(#"Tipos Ajustados", "ClienteSK", 1, 1, Int64.Type)
+		in
+		    #"Chave Adicionada"
+	lineageTag: 08731a44-d1ce-416d-b097-6de9d036dd0b
+
+	annotation PBI_ResultType = Table
+
+/// Staging da dimensão de produtos. Não carrega no modelo: alimenta dProduto.
+expression srcProductCatalog =
+		let
+		    // QuoteStyle.Csv: product_name tem vírgulas protegidas por aspas
+		    Fonte = Csv.Document(File.Contents(caminhoDados & "product-catalog.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+		    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+		    // A cultura "en-US" é a DA FONTE (CSV com ponto decimal); o modelo é pt-BR
+		    #"Tipos Ajustados" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos", {{"product_id", type text}, {"product_name", type text}, {"product_category", type text}, {"product_subcategory", type text}, {"brand", type text}, {"supplier", type text}, {"unit_price", Currency.Type}, {"product_cost", Currency.Type}, {"product_rating", type number}}, "en-US"),
+		    // Chave surrogada inteira: relacionamento em Int64 custa menos que em texto
+		    #"Chave Adicionada" = Table.AddIndexColumn(#"Tipos Ajustados", "ProdutoSK", 1, 1, Int64.Type)
+		in
+		    #"Chave Adicionada"
+	lineageTag: 8222b82d-b834-4e62-af9a-fb81ec788cbb
+
+	annotation PBI_ResultType = Table
+
+/// KPIs pré-calculados do CSV de estatísticas. Fora do modelo de propósito: são um
+/// snapshot congelado e divergem das medidas. Serve só para conferir a carga.
+expression statsCargaCsv =
+		let
+		    // QuoteStyle.Csv é obrigatório aqui: "$177,134,263.74" é um campo único entre aspas
+		    Fonte = Csv.Document(File.Contents(caminhoDados & "dataset-statistics.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+		    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+		    // Remove "$" e separador de milhar antes de converter para número
+		    #"Moeda Limpa" = Table.TransformColumns(#"Cabeçalhos Promovidos", {
+		        {"Total Revenue", each Number.FromText(Text.Remove(_, {"$", ","}), "en-US"), Currency.Type},
+		        {"Total Profit", each Number.FromText(Text.Remove(_, {"$", ","}), "en-US"), Currency.Type},
+		        {"Average Order Value", each Number.FromText(Text.Remove(_, {"$", ","}), "en-US"), Currency.Type}
+		    }),
+		    #"Tipos Ajustados" = Table.TransformColumnTypes(#"Moeda Limpa", {{"Total Transactions", Int64.Type}, {"Total Columns", Int64.Type}, {"Total Customers", Int64.Type}, {"Total Products Used", Int64.Type}, {"Date Range", type text}, {"Average Rating", type number}, {"Return Rate", Percentage.Type}, {"Cancellation Rate", Percentage.Type}}, "en-US")
+		in
+		    #"Tipos Ajustados"
+	lineageTag: da01de33-cbfd-4496-b912-ee09dec6715c
+
+	annotation PBI_ResultType = Table
+
+/// Conferência de carga: linhas e nulos nas colunas críticas de cada staging.
+/// Não carrega no modelo — visualize no editor do Power Query após um refresh.
+expression qaValidacaoCarga =
+		let
+		    __fxContaNulos = (nome as text, tabela as table, colunas as list) as table =>
+		        Table.FromRecords(
+		            List.Transform(
+		                colunas,
+		                (coluna) =>
+		                    [
+		                        Tabela = nome,
+		                        Coluna = coluna,
+		                        Linhas = Table.RowCount(tabela),
+		                        Nulos = List.Count(List.Select(Table.Column(tabela, coluna), (valor) => valor = null))
+		                    ]
+		            )
+		        ),
+		    // Nulos esperados: delivery_days e customer_rating só existem em pedido concluído
+		    Resultado = Table.Combine({
+		        __fxContaNulos("fOrders", srcEcommerceSales, {"order_id", "order_date", "customer_id", "delivery_days", "customer_rating"}),
+		        __fxContaNulos("fOrderItems", srcOrderItems, {"order_id", "product_id", "net_sales", "profit", "quantity"}),
+		        __fxContaNulos("dCliente", srcCustomerMaster, {"customer_id", "customer_acquisition_cost"}),
+		        __fxContaNulos("dProduto", srcProductCatalog, {"product_id", "unit_price"})
+		    }),
+		    Tipada = Table.TransformColumnTypes(Resultado, {{"Tabela", type text}, {"Coluna", type text}, {"Linhas", Int64.Type}, {"Nulos", Int64.Type}})
+		in
+		    Tipada
+	lineageTag: 57268b46-3223-43e9-85d0-285d9146d0f7
+
+	annotation PBI_ResultType = Table
+

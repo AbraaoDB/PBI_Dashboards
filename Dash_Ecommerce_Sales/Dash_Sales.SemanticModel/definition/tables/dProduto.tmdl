@@ -1,0 +1,103 @@
+/// Dimensao de produtos (grao: um produto).
+table dProduto
+	lineageTag: 2f3101b1-a0d9-4406-8776-e5529a59e837
+
+	/// Chave do produto.
+	column ProductId
+		dataType: string
+		lineageTag: 158680a5-a95e-4a02-9fca-fc2aed37d6e8
+		summarizeBy: none
+		sourceColumn: product_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductName
+		dataType: string
+		lineageTag: dae9f84c-b8d0-4dee-9dd0-acacac1e61b0
+		summarizeBy: none
+		sourceColumn: product_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductCategory
+		dataType: string
+		lineageTag: 93a12ab7-e8cc-4b68-842b-f3aaaf9e423f
+		summarizeBy: none
+		sourceColumn: product_category
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductSubcategory
+		dataType: string
+		lineageTag: 2013906e-1a6c-4dd2-853a-b1277b8827bd
+		summarizeBy: none
+		sourceColumn: product_subcategory
+
+		annotation SummarizationSetBy = Automatic
+
+	column Brand
+		dataType: string
+		lineageTag: 25f4affa-11e2-48a1-903d-5c5fdfd76510
+		summarizeBy: none
+		sourceColumn: brand
+
+		annotation SummarizationSetBy = Automatic
+
+	column Supplier
+		dataType: string
+		lineageTag: 1a711a70-ee08-4861-be16-03165ed545cf
+		summarizeBy: none
+		sourceColumn: supplier
+
+		annotation SummarizationSetBy = Automatic
+
+	column UnitPrice
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 49051f6c-d5fb-4cff-9a57-111a5489b0a6
+		summarizeBy: sum
+		sourceColumn: unit_price
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductCost
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 356990cc-8d19-42e0-a56f-bd69093d9919
+		summarizeBy: sum
+		sourceColumn: product_cost
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductRating
+		dataType: double
+		formatString: 0.0
+		lineageTag: 98a65835-a3b8-4e6f-8dae-993a6dd8e95d
+		summarizeBy: average
+		sourceColumn: product_rating
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Chave surrogada inteira. Lado 1 do relacionamento com fOrderItems.
+	column ProdutoSK
+		dataType: int64
+		isHidden
+		isKey
+		formatString: 0
+		isAvailableInMdx: false
+		lineageTag: a6f7d7a2-25c6-4500-981b-9f65d83013a8
+		summarizeBy: none
+		sourceColumn: ProdutoSK
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dProduto = m
+		mode: import
+		source =
+				let
+				    Fonte = srcProductCatalog
+				in
+				    Fonte
+
+	annotation PBI_ResultType = Table
+

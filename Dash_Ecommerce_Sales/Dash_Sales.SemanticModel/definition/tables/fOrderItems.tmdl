@@ -1,0 +1,131 @@
+/// Fato de vendas no grao do item de pedido. Unica fonte de receita e lucro do modelo.
+table fOrderItems
+	lineageTag: d8442d5f-5eb4-4503-b07f-f17416d970da
+
+	column Quantity
+		dataType: int64
+		formatString: #,0
+		lineageTag: 72afb456-ee0c-48bc-b4ed-b69a2c7e2c6a
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column UnitPrice
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 406a699c-34ac-4a32-95ba-1aa7343cc2ec
+		summarizeBy: sum
+		sourceColumn: unit_price
+
+		annotation SummarizationSetBy = Automatic
+
+	column DiscountPercentage
+		dataType: double
+		formatString: 0.00%
+		lineageTag: 8d777aaf-ce71-41a2-8509-bae330cd02a3
+		summarizeBy: average
+		sourceColumn: discount_percentage
+
+		annotation SummarizationSetBy = Automatic
+
+	column DiscountAmount
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: a677b44b-ad27-4f6e-954d-19d1f62e4a20
+		summarizeBy: sum
+		sourceColumn: discount_amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column GrossSales
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 1845ed95-0bb0-4b66-a349-acd54c316291
+		summarizeBy: sum
+		sourceColumn: gross_sales
+
+		annotation SummarizationSetBy = Automatic
+
+	column TaxAmount
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 65c33174-0579-47fc-81ad-2c5a91a763c6
+		summarizeBy: sum
+		sourceColumn: tax_amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column ShippingCost
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 48bd648b-189e-4270-8926-64365756ed31
+		summarizeBy: sum
+		sourceColumn: shipping_cost
+
+		annotation SummarizationSetBy = Automatic
+
+	column NetSales
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 487afb04-c318-4c25-8c4b-133cd336e1da
+		summarizeBy: sum
+		sourceColumn: net_sales
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductCost
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: d2dc5a5b-3663-40c7-878b-4b6515086f89
+		summarizeBy: sum
+		sourceColumn: product_cost
+
+		annotation SummarizationSetBy = Automatic
+
+	column Profit
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 686d6908-dd53-43f2-acb0-f67f7658b34d
+		summarizeBy: sum
+		sourceColumn: profit
+
+		annotation SummarizationSetBy = Automatic
+
+	/// FK inteira para fOrders.
+	column PedidoSK
+		dataType: int64
+		isHidden
+		formatString: 0
+		isAvailableInMdx: false
+		lineageTag: 4a784a10-183c-4c9a-9c42-91679f23f281
+		summarizeBy: none
+		sourceColumn: PedidoSK
+
+		annotation SummarizationSetBy = Automatic
+
+	/// FK inteira para dProduto.
+	column ProdutoSK
+		dataType: int64
+		isHidden
+		formatString: 0
+		isAvailableInMdx: false
+		lineageTag: 7d096f42-462d-44c2-9a98-ab167b838854
+		summarizeBy: none
+		sourceColumn: ProdutoSK
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fOrderItems = m
+		mode: import
+		source =
+				let
+				    Fonte = srcOrderItems,
+				    // Chaves de texto saem: o modelo relaciona por PedidoSK e ProdutoSK.
+				    // O OrderId legível continua disponível em fOrders.
+				    #"Chaves Texto Removidas" = Table.RemoveColumns(Fonte, {"order_id", "product_id"})
+				in
+				    #"Chaves Texto Removidas"
+
+	annotation PBI_ResultType = Table
+

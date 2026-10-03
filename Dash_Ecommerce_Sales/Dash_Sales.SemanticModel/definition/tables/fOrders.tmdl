@@ -1,0 +1,255 @@
+/// Cabecalho do pedido (grao: um pedido). Sem metricas aditivas: essas ficam em fOrderItems.
+table fOrders
+	lineageTag: 8988b27d-91c0-450b-901b-330d3161fa88
+
+	/// Chave do pedido (dimensao degenerada).
+	column OrderId
+		dataType: string
+		lineageTag: 41bbe284-5080-45cd-ba92-66e01932d92f
+		summarizeBy: none
+		sourceColumn: order_id
+
+		annotation SummarizationSetBy = Automatic
+
+	/// FK para dCalendario.
+	column OrderDate
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 3b4d9518-b927-4b40-8aac-c46249c92509
+		summarizeBy: none
+		sourceColumn: order_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column OrderTime
+		dataType: dateTime
+		formatString: Long Time
+		lineageTag: 7caf089d-98b6-4af6-8996-4b5b12027506
+		summarizeBy: none
+		sourceColumn: order_time
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Time
+
+	column OrderStatus
+		dataType: string
+		lineageTag: 73d17abc-c2dd-4243-8d34-30b6bf566b83
+		summarizeBy: none
+		sourceColumn: order_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column SalesChannel
+		dataType: string
+		lineageTag: 515af314-6a12-45a9-a03e-a4f1049358fb
+		summarizeBy: none
+		sourceColumn: sales_channel
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerType
+		dataType: string
+		lineageTag: d1042658-0076-46eb-b413-c9887bda7c02
+		summarizeBy: none
+		sourceColumn: customer_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column PaymentMethod
+		dataType: string
+		lineageTag: 08c33092-89ae-4e74-a9b4-c547e7e3abea
+		summarizeBy: none
+		sourceColumn: payment_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column PaymentStatus
+		dataType: string
+		lineageTag: b557e563-0d09-4197-a7f5-0136eb32bfca
+		summarizeBy: none
+		sourceColumn: payment_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column Currency
+		dataType: string
+		lineageTag: bd010964-a194-4531-9650-91641bab367b
+		summarizeBy: none
+		sourceColumn: currency
+
+		annotation SummarizationSetBy = Automatic
+
+	column ShippingMethod
+		dataType: string
+		lineageTag: 63bfba7f-fb18-44f3-90f2-cc9be2a68bc6
+		summarizeBy: none
+		sourceColumn: shipping_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column Warehouse
+		dataType: string
+		lineageTag: 32ebfe29-2f91-4ab0-86ac-8569423814a5
+		summarizeBy: none
+		sourceColumn: warehouse
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Nulo fora de pedido concluido - use AVERAGE, nunca divida pelo total de linhas.
+	column DeliveryDays
+		dataType: int64
+		formatString: 0
+		lineageTag: 6446162d-83f9-45df-949b-3cc023ab4c54
+		summarizeBy: average
+		sourceColumn: delivery_days
+
+		annotation SummarizationSetBy = Automatic
+
+	column EstimatedDeliveryDays
+		dataType: int64
+		formatString: 0
+		lineageTag: c51050e6-5277-451d-b6fb-08576f4fa28c
+		summarizeBy: average
+		sourceColumn: estimated_delivery_days
+
+		annotation SummarizationSetBy = Automatic
+
+	column DeliveryStatus
+		dataType: string
+		lineageTag: 35a4bc85-0aff-41fa-aef4-2fcae45f1110
+		summarizeBy: none
+		sourceColumn: delivery_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column ReturnStatus
+		dataType: string
+		lineageTag: 118a3118-44c3-4a05-a57c-9ed0206b8a20
+		summarizeBy: none
+		sourceColumn: return_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column ReturnReason
+		dataType: string
+		lineageTag: fbaba243-48f4-4c5a-954c-284eda921cc2
+		summarizeBy: none
+		sourceColumn: return_reason
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Nulo fora de pedido concluido - use AVERAGE, nunca divida pelo total de linhas.
+	column CustomerRating
+		dataType: double
+		formatString: 0.0
+		lineageTag: 18a8e19a-de4b-4e10-8183-d46ec3f5756f
+		summarizeBy: average
+		sourceColumn: customer_rating
+
+		annotation SummarizationSetBy = Automatic
+
+	column ReviewSentiment
+		dataType: string
+		lineageTag: 2fdb630d-d2be-40a6-a841-f4be1758a6c8
+		summarizeBy: none
+		sourceColumn: review_sentiment
+
+		annotation SummarizationSetBy = Automatic
+
+	column MarketingChannel
+		dataType: string
+		lineageTag: abdf7a82-90ba-4194-8d52-04e8987a576a
+		summarizeBy: none
+		sourceColumn: marketing_channel
+
+		annotation SummarizationSetBy = Automatic
+
+	column LoyaltyPointsEarned
+		dataType: int64
+		formatString: #,0
+		lineageTag: 0e2d3ee9-17a0-42fe-ad40-fa694ae6ba7b
+		summarizeBy: sum
+		sourceColumn: loyalty_points_earned
+
+		annotation SummarizationSetBy = Automatic
+
+	column LoyaltyPointsRedeemed
+		dataType: int64
+		formatString: #,0
+		lineageTag: cd2e942c-4736-4ba9-bd82-33a92afa480c
+		summarizeBy: sum
+		sourceColumn: loyalty_points_redeemed
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Valor do cliente repetido em cada pedido - nao somar.
+	column CustomerLifetimeValue
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: fb69a360-4c08-46f2-862c-cff772872f4d
+		summarizeBy: average
+		sourceColumn: customer_lifetime_value
+
+		annotation SummarizationSetBy = Automatic
+
+	column IsRepeatCustomer
+		dataType: boolean
+		formatString: """VERDADEIRO"";""VERDADEIRO"";""FALSO"""
+		lineageTag: e4c2319d-7bad-4314-9106-9d9c08aa8c98
+		summarizeBy: none
+		sourceColumn: is_repeat_customer
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Contagem acumulada do cliente repetida em cada pedido - nao somar.
+	column CustomerOrderCount
+		dataType: int64
+		formatString: 0
+		lineageTag: 9ee253b1-2939-4a2e-87ae-770f4af366b1
+		summarizeBy: average
+		sourceColumn: customer_order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Chave inteira do pedido. Lado 1 do relacionamento com fOrderItems.
+	column PedidoSK
+		dataType: int64
+		isHidden
+		formatString: 0
+		isAvailableInMdx: false
+		lineageTag: 0c16ac1f-0fa6-4832-94a6-fb70d2aa1784
+		summarizeBy: none
+		sourceColumn: PedidoSK
+
+		annotation SummarizationSetBy = Automatic
+
+	/// FK inteira para dCliente.
+	column ClienteSK
+		dataType: int64
+		isHidden
+		formatString: 0
+		isAvailableInMdx: false
+		lineageTag: fc842422-1c4f-4e62-8115-8938fe2cf5db
+		summarizeBy: none
+		sourceColumn: ClienteSK
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fOrders = m
+		mode: import
+		source =
+				let
+				    Fonte = srcEcommerceSales,
+				    // Metricas aditivas saem daqui: vivem so em fOrderItems, no grao do item.
+				    // Mante-las nas duas tabelas criava dois resultados diferentes de receita.
+				    #"Metricas Removidas" = Table.RemoveColumns(Fonte, {"quantity", "gross_sales", "discount_amount", "tax_amount", "shipping_cost", "net_sales", "product_cost", "profit", "profit_margin_percentage"}),
+				    // customer_id sai: o relacionamento usa ClienteSK, e o id de texto vive em dCliente
+				    #"Chave Texto Removida" = Table.RemoveColumns(#"Metricas Removidas", {"customer_id"})
+				in
+				    #"Chave Texto Removida"
+
+	annotation PBI_ResultType = Table
+

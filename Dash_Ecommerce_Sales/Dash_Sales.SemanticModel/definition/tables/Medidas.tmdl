@@ -1,0 +1,761 @@
+table Medidas
+	lineageTag: cffc8f29-2a52-408d-97b3-30f4e3e42983
+
+	/// Receita de todos os pedidos, em qualquer status. Valores em unidade monetaria unica: a fonte nao converte as 7 moedas.
+	measure 'Receita Bruta' = SUM ( fOrderItems[NetSales] )
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: 49ab145e-66ce-49d0-8b73-03cda1b6a1f6
+
+	/// Receita apenas de pedidos concluidos. E a receita que de fato aconteceu.
+	measure 'Receita Realizada' =
+			CALCULATE (
+				[Receita Bruta],
+				KEEPFILTERS ( fOrders[OrderStatus] = "Completed" )
+			)
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: d8318d8b-a337-4bc2-b2b7-9a04d4b52a3b
+
+	/// Receita de pedidos cancelados ou devolvidos: venda que entrou e nao se sustentou.
+	measure 'Receita Perdida' =
+			CALCULATE (
+				[Receita Bruta],
+				KEEPFILTERS ( fOrders[OrderStatus] IN { "Cancelled", "Returned" } )
+			)
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: 91dc2692-dfe6-405d-a535-f238dd3d0304
+
+	/// Receita de pedidos pendentes, nem realizada nem perdida. Exibir separada, nunca somada a realizada.
+	measure 'Receita em Aberto' =
+			CALCULATE (
+				[Receita Bruta],
+				KEEPFILTERS ( fOrders[OrderStatus] = "Pending" )
+			)
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: fd180683-942d-4a10-a1ef-b52b7418014e
+
+	/// Participacao da receita cancelada ou devolvida sobre a receita bruta.
+	measure '% Receita Perdida' = DIVIDE ( [Receita Perdida], [Receita Bruta] )
+		formatString: 0.00%
+		displayFolder: 01. Vendas
+		lineageTag: 78e72052-6497-4798-8fa1-0cf748b27eda
+
+	/// Valor de lista dos itens, antes de desconto, imposto e frete.
+	measure 'Venda Bruta antes de Desconto' = SUM ( fOrderItems[GrossSales] )
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: 95f9bc66-6d2e-4509-83e7-5d8fe8ea1cb1
+
+	/// Total de desconto concedido em valor.
+	measure 'Desconto Concedido' = SUM ( fOrderItems[DiscountAmount] )
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: 911d75e2-712b-428d-83dc-dc78939b5ffd
+
+	/// Desconto percentual medio por item vendido.
+	measure 'Desconto Medio %' = AVERAGE ( fOrderItems[DiscountPercentage] )
+		formatString: 0.00%
+		displayFolder: 01. Vendas
+		lineageTag: aa058b5c-bfe0-41d1-85e5-0b493d1ab092
+
+	/// Imposto arrecadado, ja embutido na receita bruta.
+	measure Imposto = SUM ( fOrderItems[TaxAmount] )
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: 0576537f-2311-4933-b45c-92ec23957a17
+
+	/// Custo de frete dos itens.
+	measure Frete = SUM ( fOrderItems[ShippingCost] )
+		formatString: #,0.00
+		displayFolder: 01. Vendas
+		lineageTag: 87e7da81-22dd-409d-8133-b2750e47bab6
+
+	/// Quantidade de pedidos distintos.
+	measure Pedidos = DISTINCTCOUNT ( fOrders[OrderId] )
+		formatString: #,0
+		displayFolder: 02. Volume
+		lineageTag: 9b79e5dc-3b2d-48fc-966e-7bcc9b03ebbc
+
+	/// Quantidade de linhas de item de pedido.
+	measure 'Itens Vendidos' = COUNTROWS ( fOrderItems )
+		formatString: #,0
+		displayFolder: 02. Volume
+		lineageTag: 27d520fc-9cf7-4ac0-8a77-b297ccb6b7db
+
+	/// Quantidade de unidades vendidas.
+	measure Unidades = SUM ( fOrderItems[Quantity] )
+		formatString: #,0
+		displayFolder: 02. Volume
+		lineageTag: c280cd31-3026-4a0b-8e36-ba9738e35030
+
+	/// Media de linhas de item por pedido.
+	measure 'Itens por Pedido' = DIVIDE ( [Itens Vendidos], [Pedidos] )
+		formatString: 0.00
+		displayFolder: 02. Volume
+		lineageTag: 6e90a521-7e01-4491-88c0-3a9a40cd064e
+
+	/// Media de unidades por pedido.
+	measure 'Unidades por Pedido' = DIVIDE ( [Unidades], [Pedidos] )
+		formatString: 0.00
+		displayFolder: 02. Volume
+		lineageTag: e3759d4f-08d8-41b1-9469-15963a97557b
+
+	/// Custo dos produtos vendidos.
+	measure 'Custo do Produto' = SUM ( fOrderItems[ProductCost] )
+		formatString: #,0.00
+		displayFolder: 03. Margem
+		lineageTag: aea7f0bb-19f4-42fa-9dc0-f57dc651b8fc
+
+	/// Lucro conforme a fonte. Verificado: equivale a NetSales - ProductCost - ShippingCost em 100% das linhas.
+	measure Lucro = SUM ( fOrderItems[Profit] )
+		formatString: #,0.00
+		displayFolder: 03. Margem
+		lineageTag: 980abd7e-2ebc-47cc-b82c-adcfadcd2bcc
+
+	/// Lucro sobre receita bruta. Inclui o imposto arrecadado, portanto superestima a margem economica.
+	measure 'Margem %' = DIVIDE ( [Lucro], [Receita Bruta] )
+		formatString: 0.00%
+		displayFolder: 03. Margem
+		lineageTag: 187e5314-a235-4de0-9034-2b2352ca7a38
+
+	/// Lucro excluindo o imposto arrecadado, que a fonte conta como lucro.
+	measure 'Lucro sem Imposto' = [Lucro] - [Imposto]
+		formatString: #,0.00
+		displayFolder: 03. Margem
+		lineageTag: b614bb6b-4a35-4b9b-baa7-c93ea96d30ad
+
+	/// Margem economica: lucro e receita, ambos sem o imposto. E a leitura mais fiel da rentabilidade.
+	measure 'Margem sem Imposto %' = DIVIDE ( [Lucro] - [Imposto], [Receita Bruta] - [Imposto] )
+		formatString: 0.00%
+		displayFolder: 03. Margem
+		lineageTag: aae00891-00c8-400b-bea3-31e8368f5a62
+
+	/// Lucro apenas dos pedidos concluidos.
+	measure 'Lucro Realizado' =
+			CALCULATE (
+				[Lucro],
+				KEEPFILTERS ( fOrders[OrderStatus] = "Completed" )
+			)
+		formatString: #,0.00
+		displayFolder: 03. Margem
+		lineageTag: 20e220c6-7621-4f86-a7f3-160e16c16097
+
+	/// Receita bruta por pedido (AOV).
+	measure 'Ticket Medio' = DIVIDE ( [Receita Bruta], [Pedidos] )
+		formatString: #,0.00
+		displayFolder: 04. Ticket Medio
+		lineageTag: dd69d88b-b5f2-4fa2-b5b6-91cf19f0a92b
+
+	/// Receita realizada por pedido concluido.
+	measure 'Ticket Medio Realizado' = DIVIDE ( [Receita Realizada], [Pedidos Concluidos] )
+		formatString: #,0.00
+		displayFolder: 04. Ticket Medio
+		lineageTag: 30a1b524-b0cd-4891-9747-bca43b385a27
+
+	/// Receita media por linha de item.
+	measure 'Receita por Item' = DIVIDE ( [Receita Bruta], [Itens Vendidos] )
+		formatString: #,0.00
+		displayFolder: 04. Ticket Medio
+		lineageTag: acdac2f0-0cea-4c2e-b21d-c5a795ed4409
+
+	/// Preco unitario medio efetivamente cobrado.
+	measure 'Preco Medio Praticado' = AVERAGE ( fOrderItems[UnitPrice] )
+		formatString: #,0.00
+		displayFolder: 04. Ticket Medio
+		lineageTag: 545e4648-39e6-426c-a8e3-aba2c62005c8
+
+	/// Preco unitario medio do catalogo.
+	measure 'Preco Medio de Tabela' = AVERAGE ( dProduto[UnitPrice] )
+		formatString: #,0.00
+		displayFolder: 04. Ticket Medio
+		lineageTag: f0ba2515-8c0b-4f5c-ad12-17987796df5e
+
+	/// Desvio do preco praticado em relacao ao preco de tabela.
+	measure 'Variacao de Preco %' =
+			VAR __Praticado = [Preco Medio Praticado]
+			VAR __Tabela = [Preco Medio de Tabela]
+			RETURN
+				DIVIDE ( __Praticado - __Tabela, __Tabela )
+		formatString: +0.00%;-0.00%
+		displayFolder: 04. Ticket Medio
+		lineageTag: bdd903e9-c0be-4acd-b91f-92010db70f81
+
+	/// Pedidos com status Completed.
+	measure 'Pedidos Concluidos' =
+			CALCULATE (
+				[Pedidos],
+				KEEPFILTERS ( fOrders[OrderStatus] = "Completed" )
+			)
+		formatString: #,0
+		displayFolder: 05. Status do Pedido
+		lineageTag: 31b314fb-6f5c-4ecd-bccf-d00620c82dd1
+
+	/// Pedidos com status Returned.
+	measure 'Pedidos Devolvidos' =
+			CALCULATE (
+				[Pedidos],
+				KEEPFILTERS ( fOrders[OrderStatus] = "Returned" )
+			)
+		formatString: #,0
+		displayFolder: 05. Status do Pedido
+		lineageTag: 42016e70-451e-45fe-bb4d-c87272a91d63
+
+	/// Pedidos com status Cancelled.
+	measure 'Pedidos Cancelados' =
+			CALCULATE (
+				[Pedidos],
+				KEEPFILTERS ( fOrders[OrderStatus] = "Cancelled" )
+			)
+		formatString: #,0
+		displayFolder: 05. Status do Pedido
+		lineageTag: f2dd19b7-350a-4692-b116-9c0a4d1a59a3
+
+	/// Pedidos com status Pending.
+	measure 'Pedidos Pendentes' =
+			CALCULATE (
+				[Pedidos],
+				KEEPFILTERS ( fOrders[OrderStatus] = "Pending" )
+			)
+		formatString: #,0
+		displayFolder: 05. Status do Pedido
+		lineageTag: 920e78ae-46d2-4def-9d40-f47940b21bb9
+
+	/// Participacao dos pedidos concluidos no total.
+	measure 'Taxa de Conclusao %' = DIVIDE ( [Pedidos Concluidos], [Pedidos] )
+		formatString: 0.00%
+		displayFolder: 05. Status do Pedido
+		lineageTag: 330a4a86-e5fe-4ab9-bbae-b6a8db347c89
+
+	/// Participacao dos pedidos devolvidos no total.
+	measure 'Taxa de Devolucao %' = DIVIDE ( [Pedidos Devolvidos], [Pedidos] )
+		formatString: 0.00%
+		displayFolder: 05. Status do Pedido
+		lineageTag: cb8a1314-e856-42d0-9924-e83b509952c3
+
+	/// Participacao dos pedidos cancelados no total.
+	measure 'Taxa de Cancelamento %' = DIVIDE ( [Pedidos Cancelados], [Pedidos] )
+		formatString: 0.00%
+		displayFolder: 05. Status do Pedido
+		lineageTag: 3156d22e-6d3a-48bb-8afa-4ad9c5774d42
+
+	/// Receita bruta acumulada do inicio do ano ate a data em contexto.
+	measure 'Receita Acumulada no Ano' = TOTALYTD ( [Receita Bruta], dCalendario[Data] )
+		formatString: #,0.00
+		displayFolder: 06. Tempo
+		lineageTag: d502ff44-2e7f-4209-beec-749340c06a0e
+
+	/// Receita realizada acumulada do inicio do ano ate a data em contexto.
+	measure 'Receita Realizada Acumulada no Ano' = TOTALYTD ( [Receita Realizada], dCalendario[Data] )
+		formatString: #,0.00
+		displayFolder: 06. Tempo
+		lineageTag: fcb31a5d-79e5-426a-ba26-d776ef5c66b9
+
+	/// Receita bruta dividida pelos dias com pedido no periodo filtrado.
+	measure 'Receita Media Diaria' =
+			VAR __Dias = DISTINCTCOUNT ( fOrders[OrderDate] )
+			RETURN
+				DIVIDE ( [Receita Bruta], __Dias )
+		formatString: #,0.00
+		displayFolder: 06. Tempo
+		lineageTag: 60623d13-c595-486f-a500-443798aafcaf
+
+	/// Dias medios de entrega. Nulo fora de pedido concluido, logo AVERAGE ignora os demais status.
+	measure 'Prazo Medio de Entrega' = AVERAGE ( fOrders[DeliveryDays] )
+		formatString: 0.0
+		displayFolder: 07. Operacao e Entrega
+		lineageTag: 6e60a4fb-9668-4d38-a907-7a0b71e272dc
+
+	/// Dias medios prometidos ao cliente.
+	measure 'Prazo Medio Estimado' = AVERAGE ( fOrders[EstimatedDeliveryDays] )
+		formatString: 0.0
+		displayFolder: 07. Operacao e Entrega
+		lineageTag: 50ac0ee9-3d87-41b8-bcfb-24979b844524
+
+	/// Diferenca entre o prazo real e o prometido. Positivo significa entrega mais lenta que a promessa.
+	measure 'Desvio de Prazo' = [Prazo Medio de Entrega] - [Prazo Medio Estimado]
+		formatString: +0.0;-0.0
+		displayFolder: 07. Operacao e Entrega
+		lineageTag: cab9931c-96f0-43b7-aa06-6d411a7537a2
+
+	/// Pedidos entregues acima do prazo estimado. Comparar duas colunas exige FILTER, nao predicado em CALCULATE.
+	measure 'Entregas Atrasadas' =
+			VAR __atrasadas =
+				FILTER (
+					fOrders,
+					NOT ISBLANK ( fOrders[DeliveryDays] )
+						&& fOrders[DeliveryDays] > fOrders[EstimatedDeliveryDays]
+				)
+			RETURN
+				COUNTROWS ( __atrasadas )
+		formatString: #,0
+		displayFolder: 07. Operacao e Entrega
+		lineageTag: 10dccba7-5aba-4754-aceb-6c0532fdd67b
+
+	/// Pedidos concluidos entregues dentro do prazo estimado.
+	measure 'Entregas no Prazo' = [Pedidos Concluidos] - [Entregas Atrasadas]
+		formatString: #,0
+		displayFolder: 07. Operacao e Entrega
+		lineageTag: 6666b574-4aee-4cb3-9c23-f8bfce3dd178
+
+	/// Percentual de pedidos concluidos entregues no prazo prometido ou antes.
+	measure 'Aderencia ao Prazo %' = DIVIDE ( [Entregas no Prazo], [Pedidos Concluidos] )
+		formatString: 0.00%
+		displayFolder: 07. Operacao e Entrega
+		lineageTag: b0739333-fd97-41f4-a599-04ea17a22020
+
+	/// Custo de frete medio por pedido.
+	measure 'Frete Medio por Pedido' = DIVIDE ( [Frete], [Pedidos] )
+		formatString: #,0.00
+		displayFolder: 07. Operacao e Entrega
+		lineageTag: b9f33e22-66ca-4018-8d06-7f90d1cd06a7
+
+	/// Nota media do cliente. Nulo fora de pedido concluido, logo AVERAGE ignora os demais status.
+	measure 'Nota Media' = AVERAGE ( fOrders[CustomerRating] )
+		formatString: 0.00
+		displayFolder: 08. Qualidade
+		lineageTag: 33ebd1f6-14ef-43f9-a80c-55a8cf106fc5
+
+	/// Pedidos com sentimento de avaliacao negativo.
+	measure 'Avaliacoes Negativas' =
+			CALCULATE (
+				[Pedidos],
+				KEEPFILTERS ( fOrders[ReviewSentiment] = "Negative" )
+			)
+		formatString: #,0
+		displayFolder: 08. Qualidade
+		lineageTag: d4ff8ece-2afd-411c-afc4-8ffe286b38d9
+
+	/// Participacao das avaliacoes negativas entre os pedidos concluidos.
+	measure '% Avaliacoes Negativas' = DIVIDE ( [Avaliacoes Negativas], [Pedidos Concluidos] )
+		formatString: 0.00%
+		displayFolder: 08. Qualidade
+		lineageTag: 0916a87e-9a34-49ed-8cf2-2b6d7adc81e3
+
+	/// Nota media propagando o filtro de produto ate o pedido. Use esta, e nao Nota Media, ao cruzar com dProduto.
+	measure 'Nota Media por Produto' =
+			CALCULATE (
+				AVERAGE ( fOrders[CustomerRating] ),
+				CROSSFILTER ( fOrderItems[PedidoSK], fOrders[PedidoSK], BOTH )
+			)
+		formatString: 0.00
+		displayFolder: 08. Qualidade
+		lineageTag: 529022c5-71ef-4aac-aea2-b06f14a6283b
+
+	/// Clientes distintos com ao menos um pedido no contexto.
+	measure 'Clientes Ativos' = DISTINCTCOUNT ( fOrders[ClienteSK] )
+		formatString: #,0
+		displayFolder: 09. Cliente
+		lineageTag: ae27f01a-857f-4afc-a8dc-1d7b74c8337d
+
+	/// Clientes na base, com ou sem pedido.
+	measure 'Clientes Cadastrados' = COUNTROWS ( dCliente )
+		formatString: #,0
+		displayFolder: 09. Cliente
+		lineageTag: dfd1ba12-df8b-4a13-98ee-bf46e0ebe034
+
+	/// Receita bruta media por cliente ativo.
+	measure 'Receita por Cliente' = DIVIDE ( [Receita Bruta], [Clientes Ativos] )
+		formatString: #,0.00
+		displayFolder: 09. Cliente
+		lineageTag: 96433c66-fd39-477c-89e2-8d636c34082a
+
+	/// Media de pedidos por cliente ativo.
+	measure 'Pedidos por Cliente' = DIVIDE ( [Pedidos], [Clientes Ativos] )
+		formatString: 0.00
+		displayFolder: 09. Cliente
+		lineageTag: bd98217c-a4b1-4213-9b48-23aed7878097
+
+	/// Valor de vida do cliente conforme a fonte. E atributo repetido em cada pedido: media, nunca soma.
+	measure 'CLV Medio' = AVERAGE ( fOrders[CustomerLifetimeValue] )
+		formatString: #,0.00
+		displayFolder: 09. Cliente
+		lineageTag: a8c820e3-f386-4f2d-8a25-cb1b4cb18243
+
+	/// Custo total de aquisicao dos clientes no contexto. Vive em dCliente, uma vez por cliente.
+	measure 'Custo de Aquisicao' = SUM ( dCliente[CustomerAcquisitionCost] )
+		formatString: #,0.00
+		displayFolder: 10. Marketing e Aquisicao
+		lineageTag: 8360e560-d5ca-4864-9e6e-2c176373b418
+
+	/// Custo de aquisicao medio por cliente.
+	measure 'CAC Medio' = DIVIDE ( [Custo de Aquisicao], [Clientes Cadastrados] )
+		formatString: #,0.00
+		displayFolder: 10. Marketing e Aquisicao
+		lineageTag: b4c619fb-83e5-4ed7-97c0-36e1a4a88185
+
+	/// Quantas vezes o valor do cliente cobre o custo de adquiri-lo.
+	measure 'Razao CLV sobre CAC' = DIVIDE ( [CLV Medio], [CAC Medio] )
+		formatString: 0.0
+		displayFolder: 10. Marketing e Aquisicao
+		lineageTag: 2fcf5731-b729-4c9c-acc4-ec326381b5f2
+
+	/// Pontos de fidelidade concedidos.
+	measure 'Pontos Ganhos' = SUM ( fOrders[LoyaltyPointsEarned] )
+		formatString: #,0
+		displayFolder: 11. Fidelidade
+		lineageTag: 14b735b4-363b-452a-ab44-1e16f5b5f65c
+
+	/// Pontos de fidelidade resgatados.
+	measure 'Pontos Resgatados' = SUM ( fOrders[LoyaltyPointsRedeemed] )
+		formatString: #,0
+		displayFolder: 11. Fidelidade
+		lineageTag: 19a02ed6-8745-40ba-a125-714a12fedd14
+
+	/// Passivo de pontos concedidos e ainda nao resgatados.
+	measure 'Pontos em Aberto' = [Pontos Ganhos] - [Pontos Resgatados]
+		formatString: #,0
+		displayFolder: 11. Fidelidade
+		lineageTag: d2b5159f-8ad2-4d8e-82ad-ea95a27d6e4d
+
+	/// Percentual dos pontos concedidos que foi resgatado.
+	measure 'Taxa de Resgate %' = DIVIDE ( [Pontos Resgatados], [Pontos Ganhos] )
+		formatString: 0.00%
+		displayFolder: 11. Fidelidade
+		lineageTag: 8a217a6e-2a8e-455d-9381-df6e36a1fc36
+
+	/// Pedidos cujo pagamento falhou.
+	measure 'Pedidos com Pagamento Falho' =
+			CALCULATE (
+				[Pedidos],
+				KEEPFILTERS ( fOrders[PaymentStatus] = "Failed" )
+			)
+		formatString: #,0
+		displayFolder: 12. Pagamento
+		lineageTag: b5ddc7b0-0119-4ac4-9dab-5c2bbdcfe0b7
+
+	/// Participacao dos pedidos com pagamento falho.
+	measure 'Taxa de Falha de Pagamento %' = DIVIDE ( [Pedidos com Pagamento Falho], [Pedidos] )
+		formatString: 0.00%
+		displayFolder: 12. Pagamento
+		lineageTag: 7feadc67-5814-448c-ad50-35b0ee04be02
+
+	/// Pedidos com pagamento confirmado.
+	measure 'Pedidos Pagos' =
+			CALCULATE (
+				[Pedidos],
+				KEEPFILTERS ( fOrders[PaymentStatus] = "Paid" )
+			)
+		formatString: #,0
+		displayFolder: 12. Pagamento
+		lineageTag: f6aec238-7904-458d-8bf9-816381692797
+
+	/// Violeta de marca. Series principais e destaques.
+	measure 'Cor Primaria' = "#7C5CFF"
+		displayFolder: 91. Cores
+		lineageTag: ecb397ec-ba02-4c2e-87aa-b1055cfe0425
+
+	/// Violeta claro: texto sobre superficie escura.
+	measure 'Cor Primaria Clara' = "#A78BFA"
+		displayFolder: 91. Cores
+		lineageTag: 2d5db2c7-fc34-47b3-8af4-6506dc71d783
+
+	/// Ciano: segunda serie e contraste frio.
+	measure 'Cor Secundaria' = "#22D3EE"
+		displayFolder: 91. Cores
+		lineageTag: 36a1ba2e-0132-4598-a281-4ba48ae0cb45
+
+	/// Verde: resultado bom, acima do alvo.
+	measure 'Cor Positiva' = "#34D399"
+		displayFolder: 91. Cores
+		lineageTag: 5ae7ad53-ddb3-453d-84b3-0c7c4eef0d02
+
+	/// Ambar: resultado em zona de atencao.
+	measure 'Cor Alerta' = "#FBBF24"
+		displayFolder: 91. Cores
+		lineageTag: d12ddce4-9333-49ad-b412-ca3f99099e31
+
+	/// Vermelho: resultado ruim, abaixo do alvo.
+	measure 'Cor Negativa' = "#F87171"
+		displayFolder: 91. Cores
+		lineageTag: ad826584-bd14-4c30-b6f5-0f5798330205
+
+	/// Texto principal sobre superficie escura.
+	measure 'Cor Texto' = "#F4F3FA"
+		displayFolder: 91. Cores
+		lineageTag: f9fff4d5-a9ff-4728-820c-3e93c30c7f19
+
+	/// Texto secundario, rotulos e eixos.
+	measure 'Cor Texto Suave' = "#9A96B8"
+		displayFolder: 91. Cores
+		lineageTag: 20fc72cc-4653-45d4-82d3-a41e8e68e879
+
+	/// Serie de contexto, sem enfase.
+	measure 'Cor Neutra' = "#6B678A"
+		displayFolder: 91. Cores
+		lineageTag: 5b74de98-fe3d-4901-a829-8e810b045036
+
+	/// Trilho de barra e divisoria.
+	measure 'Cor Trilho' = "#2A2740"
+		displayFolder: 91. Cores
+		lineageTag: 65abbb3b-7621-441d-b262-9e476c15357b
+
+	/// Fundo de card e visual.
+	measure 'Cor Superficie' = "#1A1727"
+		displayFolder: 91. Cores
+		lineageTag: e53c9651-4379-49d5-8184-5f140bd392a7
+
+	/// Fundo da pagina.
+	measure 'Cor Fundo' = "#0D0B16"
+		displayFolder: 91. Cores
+		lineageTag: 5bd2e017-36ee-46b8-a254-b6e5930f7304
+
+	/// Barra SVG da participacao da linha na receita total visivel, com rotulo em %.
+	measure 'Participacao Barra SVG' =
+			VAR __Pct = DIVIDE ( [Receita Bruta], CALCULATE ( [Receita Bruta], ALLSELECTED () ) )
+			VAR __Largura = INT ( 112 * MIN ( __Pct, 1 ) )
+			VAR __Cor = [Cor Primaria]
+			VAR __Desc = "<desc>" & FORMAT ( __Pct * 1000000, "000000000000" ) & "</desc>"
+			VAR __NoEscopo =
+				ISINSCOPE ( dProduto[ProductCategory] )
+					|| ISINSCOPE ( dProduto[Brand] )
+					|| ISINSCOPE ( fOrders[MarketingChannel] )
+					|| ISINSCOPE ( fOrders[Warehouse] )
+					|| ISINSCOPE ( fOrders[ReturnReason] )
+					|| ISINSCOPE ( dCliente[Region] )
+			RETURN
+				IF (
+					__NoEscopo && NOT ISBLANK ( __Pct ),
+					"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 20'>"
+						& __Desc
+						& "<rect x='0' y='5' width='112' height='10' rx='5' fill='" & [Cor Trilho] & "'/>"
+						& "<rect x='0' y='5' width='" & __Largura & "' height='10' rx='5' fill='" & __Cor & "'/>"
+						& "<text x='120' y='14' font-family='Segoe UI, sans-serif' font-size='11' fill='"
+						& [Cor Texto Suave] & "'>" & FORMAT ( __Pct, "0.0%", "pt-BR" ) & "</text></svg>"
+				)
+		displayFolder: 90. Visuais SVG
+		lineageTag: 30ad4ca3-a784-49db-bf66-93244c211536
+		dataCategory: ImageUrl
+
+	/// Pill SVG do nivel de servico de entrega, por faixa de [Aderencia ao Prazo %].
+	measure 'Nivel de Servico Pill SVG' =
+			VAR __Aderencia = [Aderencia ao Prazo %]
+			VAR __Status =
+				SWITCH (
+					TRUE (),
+					__Aderencia >= 0.9, "No alvo",
+					__Aderencia >= 0.8, "Atencao",
+					"Abaixo"
+				)
+			VAR __Cor =
+				SWITCH ( __Status, "No alvo", [Cor Positiva], "Atencao", [Cor Alerta], [Cor Negativa] )
+			VAR __Ordem = SWITCH ( __Status, "No alvo", 3, "Atencao", 2, 1 )
+			RETURN
+				IF (
+					( ISINSCOPE ( fOrders[Warehouse] ) || ISINSCOPE ( fOrders[ShippingMethod] ) )
+						&& NOT ISBLANK ( __Aderencia ),
+					"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 20'>"
+						& "<desc>" & __Ordem & FORMAT ( __Aderencia * 100000, "00000000" ) & "</desc>"
+						& "<rect x='0' y='2' width='104' height='16' rx='8' fill='" & __Cor & "' fill-opacity='0.16'/>"
+						& "<circle cx='12' cy='10' r='4' fill='" & __Cor & "'/>"
+						& "<text x='23' y='14' font-family='Segoe UI, sans-serif' font-size='11' fill='"
+						& __Cor & "'>" & __Status & " " & FORMAT ( __Aderencia, "0%", "pt-BR" )
+						& "</text></svg>"
+				)
+		displayFolder: 90. Visuais SVG
+		lineageTag: 5fd3512e-095b-4552-926e-ca63122074df
+		dataCategory: ImageUrl
+
+	/// Sparkline SVG da receita nos ultimos 12 meses da linha, com ponto final destacado.
+	measure 'Receita Tendencia SVG' =
+			VAR __Meses =
+				CALCULATETABLE (
+					VALUES ( dCalendario[AnoMesNum] ),
+					DATESINPERIOD ( dCalendario[Data], MAX ( dCalendario[Data] ), -12, MONTH )
+				)
+			VAR __Serie =
+				ADDCOLUMNS (
+					__Meses,
+					"@v", CALCULATE ( [Receita Bruta] ),
+					"@i", RANKX ( __Meses, dCalendario[AnoMesNum],, ASC )
+				)
+			VAR __N = COUNTROWS ( __Serie )
+			VAR __Max = MAXX ( __Serie, [@v] )
+			VAR __Min = MINX ( __Serie, [@v] )
+			VAR __Points =
+				CONCATENATEX (
+					__Serie,
+					FORMAT ( DIVIDE ( ( [@i] - 1 ) * 150, __N - 1 ) + 5, "0.0#", "en-US" ) & ","
+						& FORMAT ( 24 - DIVIDE ( ( [@v] - __Min ) * 18, __Max - __Min, 0 ), "0.0#", "en-US" ),
+					" ", [@i], ASC
+				)
+			VAR __UltimoX = FORMAT ( 155, "0", "en-US" )
+			VAR __UltimoV = MAXX ( FILTER ( __Serie, [@i] = __N ), [@v] )
+			VAR __UltimoY =
+				FORMAT ( 24 - DIVIDE ( ( __UltimoV - __Min ) * 18, __Max - __Min, 0 ), "0.0#", "en-US" )
+			RETURN
+				IF (
+					(
+						ISINSCOPE ( dProduto[ProductCategory] )
+							|| ISINSCOPE ( dProduto[Brand] )
+							|| ISINSCOPE ( fOrders[MarketingChannel] )
+							|| ISINSCOPE ( fOrders[Warehouse] )
+							|| ISINSCOPE ( dCliente[Region] )
+							|| ISINSCOPE ( dCliente[CustomerSegment] )
+					) && __N >= 2 && __Max > __Min,
+					"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 28'>"
+						& "<polyline points='" & __Points & "' fill='none' stroke='" & [Cor Primaria Clara]
+						& "' stroke-width='1.6' stroke-linejoin='round' stroke-linecap='round'/>"
+						& "<circle cx='" & __UltimoX & "' cy='" & __UltimoY & "' r='2.4' fill='"
+						& [Cor Secundaria] & "'/></svg>"
+				)
+		displayFolder: 90. Visuais SVG
+		lineageTag: 4f8ab924-e924-46ef-a67a-de35e5e5a5ed
+		dataCategory: ImageUrl
+
+	/// Receita do ultimo mes presente no contexto. Em tabela mensal, e o proprio mes da linha.
+	measure 'Receita Mes Corrente' =
+			VAR __Fim = MAX ( dCalendario[Data] )
+			VAR __AnoMes = YEAR ( __Fim ) * 100 + MONTH ( __Fim )
+			RETURN
+				CALCULATE (
+					[Receita Bruta],
+					REMOVEFILTERS ( dCalendario ),
+					dCalendario[AnoMesNum] = __AnoMes
+				)
+		formatString: #,0.00
+		displayFolder: 06. Tempo
+		lineageTag: 4b19d8c6-ec61-406b-b7cf-a1569614675c
+
+	/// Receita do mes imediatamente anterior ao ultimo mes do contexto.
+	measure 'Receita Mes Anterior' =
+			VAR __Fim = MAX ( dCalendario[Data] )
+			VAR __Anterior = EOMONTH ( __Fim, -1 )
+			VAR __AnoMes = YEAR ( __Anterior ) * 100 + MONTH ( __Anterior )
+			RETURN
+				CALCULATE (
+					[Receita Bruta],
+					REMOVEFILTERS ( dCalendario ),
+					dCalendario[AnoMesNum] = __AnoMes
+				)
+		formatString: #,0.00
+		displayFolder: 06. Tempo
+		lineageTag: 4405f221-86e0-40a7-94ca-2b3141f2b156
+
+	/// Variacao da receita do ultimo mes contra o mes anterior.
+	measure 'Variacao Receita MoM %' = DIVIDE ( [Receita Mes Corrente] - [Receita Mes Anterior], [Receita Mes Anterior] )
+		formatString: +0.0%;-0.0%
+		displayFolder: 06. Tempo
+		lineageTag: 6d28f43c-7763-46f9-8bd7-6b508acf29b4
+
+	/// Pedidos do ultimo mes presente no contexto.
+	measure 'Pedidos Mes Corrente' =
+			VAR __Fim = MAX ( dCalendario[Data] )
+			VAR __AnoMes = YEAR ( __Fim ) * 100 + MONTH ( __Fim )
+			RETURN
+				CALCULATE ( [Pedidos], REMOVEFILTERS ( dCalendario ), dCalendario[AnoMesNum] = __AnoMes )
+		formatString: #,0
+		displayFolder: 06. Tempo
+		lineageTag: 4b6b1ccd-0904-4b79-8558-c40a54829c82
+
+	/// Pedidos do mes imediatamente anterior ao ultimo mes do contexto.
+	measure 'Pedidos Mes Anterior' =
+			VAR __Fim = MAX ( dCalendario[Data] )
+			VAR __Anterior = EOMONTH ( __Fim, -1 )
+			VAR __AnoMes = YEAR ( __Anterior ) * 100 + MONTH ( __Anterior )
+			RETURN
+				CALCULATE ( [Pedidos], REMOVEFILTERS ( dCalendario ), dCalendario[AnoMesNum] = __AnoMes )
+		formatString: #,0
+		displayFolder: 06. Tempo
+		lineageTag: 8ffe19c4-415b-447f-bb3a-96ca326f4d35
+
+	/// Variacao dos pedidos do ultimo mes contra o mes anterior.
+	measure 'Variacao Pedidos MoM %' = DIVIDE ( [Pedidos Mes Corrente] - [Pedidos Mes Anterior], [Pedidos Mes Anterior] )
+		formatString: +0.0%;-0.0%
+		displayFolder: 06. Tempo
+		lineageTag: 15fd25ad-c07e-4607-8ded-4c74be30c6ea
+
+	/// Ticket medio do ultimo mes do contexto.
+	measure 'Ticket Mes Corrente' = DIVIDE ( [Receita Mes Corrente], [Pedidos Mes Corrente] )
+		formatString: #,0.00
+		displayFolder: 06. Tempo
+		lineageTag: e60b3f14-a169-4dd9-9d88-640e9bc97ab9
+
+	/// Ticket medio do mes anterior.
+	measure 'Ticket Mes Anterior' = DIVIDE ( [Receita Mes Anterior], [Pedidos Mes Anterior] )
+		formatString: #,0.00
+		displayFolder: 06. Tempo
+		lineageTag: 9f2e5689-e510-4423-8504-49a71663d548
+
+	/// Variacao do ticket medio do ultimo mes contra o mes anterior.
+	measure 'Variacao Ticket MoM %' = DIVIDE ( [Ticket Mes Corrente] - [Ticket Mes Anterior], [Ticket Mes Anterior] )
+		formatString: +0.0%;-0.0%
+		displayFolder: 06. Tempo
+		lineageTag: 532b324a-9c58-4ee3-bd4b-8eed3f3ee879
+
+	/// Margem sem imposto do ultimo mes do contexto.
+	measure 'Margem Mes Corrente %' =
+			VAR __Fim = MAX ( dCalendario[Data] )
+			VAR __AnoMes = YEAR ( __Fim ) * 100 + MONTH ( __Fim )
+			RETURN
+				CALCULATE (
+					[Margem sem Imposto %],
+					REMOVEFILTERS ( dCalendario ),
+					dCalendario[AnoMesNum] = __AnoMes
+				)
+		formatString: 0.00%
+		displayFolder: 06. Tempo
+		lineageTag: ab2148ba-cf9b-444c-b1fb-bfc6d955b6b7
+
+	/// Margem sem imposto do mes anterior.
+	measure 'Margem Mes Anterior %' =
+			VAR __Fim = MAX ( dCalendario[Data] )
+			VAR __Anterior = EOMONTH ( __Fim, -1 )
+			VAR __AnoMes = YEAR ( __Anterior ) * 100 + MONTH ( __Anterior )
+			RETURN
+				CALCULATE (
+					[Margem sem Imposto %],
+					REMOVEFILTERS ( dCalendario ),
+					dCalendario[AnoMesNum] = __AnoMes
+				)
+		formatString: 0.00%
+		displayFolder: 06. Tempo
+		lineageTag: 4e67faf2-c278-4102-883f-e6527b37a08f
+
+	/// Variacao da margem em pontos percentuais, ultimo mes contra o anterior.
+	measure 'Variacao Margem MoM pp' = ( [Margem Mes Corrente %] - [Margem Mes Anterior %] ) * 100
+		formatString: +0.0" pp";-0.0" pp"
+		displayFolder: 06. Tempo
+		lineageTag: b13e2adc-7ff8-41dc-8483-9fc30e130435
+
+	/// Delta SVG da variacao mensal: seta, cor e percentual. Reforca a cor com forma e sinal.
+	measure 'Variacao MoM Delta SVG' =
+			VAR __Var = [Variacao Receita MoM %]
+			VAR __Cor = IF ( __Var >= 0, [Cor Positiva], [Cor Negativa] )
+			VAR __Seta = IF ( __Var >= 0, "M6,13 L11,5 L16,13 Z", "M6,5 L11,13 L16,5 Z" )
+			VAR __NoEscopo =
+				ISINSCOPE ( dCalendario[AnoMes] )
+					|| ISINSCOPE ( dProduto[ProductCategory] )
+					|| ISINSCOPE ( dProduto[Brand] )
+					|| ISINSCOPE ( fOrders[MarketingChannel] )
+					|| ISINSCOPE ( fOrders[Warehouse] )
+					|| ISINSCOPE ( dCliente[Region] )
+					|| ISINSCOPE ( dCliente[CustomerSegment] )
+			RETURN
+				IF (
+					__NoEscopo && NOT ISBLANK ( __Var ),
+					"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 20'>"
+						& "<desc>" & FORMAT ( ( __Var + 100 ) * 100000, "000000000000" ) & "</desc>"
+						& "<path d='" & __Seta & "' fill='" & __Cor & "'/>"
+						& "<text x='24' y='14' font-family='Segoe UI, sans-serif' font-size='11' fill='"
+						& __Cor & "'>" & FORMAT ( __Var, "+0.0%;-0.0%", "pt-BR" ) & "</text></svg>"
+				)
+		displayFolder: 90. Visuais SVG
+		lineageTag: 0393762f-cb9b-4a5d-994a-29951fa458ce
+		dataCategory: ImageUrl
+
+	column Medidas
+		isHidden
+		lineageTag: bd0e74c2-34e8-454f-a61a-c45c9ff8b4ed
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Medidas]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Medidas = calculated
+		mode: import
+		source = SELECTCOLUMNS ( { 1 }, "Medidas", ''[Value] )
+

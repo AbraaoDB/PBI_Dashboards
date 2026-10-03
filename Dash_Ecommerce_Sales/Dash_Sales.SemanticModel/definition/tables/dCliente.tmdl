@@ -1,0 +1,118 @@
+/// Dimensao de clientes (grao: um cliente).
+table dCliente
+	lineageTag: 9e5086e9-6b52-4cd5-9650-798c67b72079
+
+	/// Chave do cliente.
+	column CustomerId
+		dataType: string
+		lineageTag: 101c8b1c-ad3a-44ff-869f-252720b06fa5
+		summarizeBy: none
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerName
+		dataType: string
+		lineageTag: dad89a59-5fbc-42c0-8db4-96c663c8a8dc
+		summarizeBy: none
+		sourceColumn: customer_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerAge
+		dataType: int64
+		formatString: 0
+		lineageTag: ed73c341-d912-4caa-8148-21c303a868c1
+		summarizeBy: none
+		sourceColumn: customer_age
+
+		annotation SummarizationSetBy = Automatic
+
+	column Gender
+		dataType: string
+		lineageTag: 95c1ec3d-e8b2-45f6-a6f4-600aaf23a15f
+		summarizeBy: none
+		sourceColumn: gender
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerSegment
+		dataType: string
+		lineageTag: 2bbc3a6b-edef-464f-8e5e-0f47eeb365e1
+		summarizeBy: none
+		sourceColumn: customer_segment
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerCity
+		dataType: string
+		lineageTag: 55840637-85bd-48ef-afab-d3ef3e7d0818
+		summarizeBy: none
+		sourceColumn: customer_city
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerState
+		dataType: string
+		lineageTag: 9ef67ce2-10b4-49f7-a760-20f332350c32
+		summarizeBy: none
+		sourceColumn: customer_state
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerCountry
+		dataType: string
+		lineageTag: f3b89bf4-d076-484e-a89b-321381f41de9
+		summarizeBy: none
+		sourceColumn: customer_country
+
+		annotation SummarizationSetBy = Automatic
+
+	column Region
+		dataType: string
+		lineageTag: 3be6302d-ed3c-4c98-afe4-66f1bbd59b4e
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerPostalCode
+		dataType: string
+		lineageTag: 0f24acf7-e56c-48a5-8268-48d4a18f872d
+		summarizeBy: none
+		sourceColumn: customer_postal_code
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerAcquisitionCost
+		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 7f3c3b6f-cee6-43e5-be92-89c9072a811b
+		summarizeBy: sum
+		sourceColumn: customer_acquisition_cost
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Chave surrogada inteira. Lado 1 do relacionamento com fOrders e fOrderItems.
+	column ClienteSK
+		dataType: int64
+		isHidden
+		isKey
+		formatString: 0
+		isAvailableInMdx: false
+		lineageTag: 594a213b-63f2-4073-9257-6aa2eec2ff93
+		summarizeBy: none
+		sourceColumn: ClienteSK
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dCliente = m
+		mode: import
+		source =
+				let
+				    Fonte = srcCustomerMaster
+				in
+				    Fonte
+
+	annotation PBI_ResultType = Table
+

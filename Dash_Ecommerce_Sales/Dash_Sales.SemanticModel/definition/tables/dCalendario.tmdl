@@ -1,0 +1,153 @@
+/// Tabela calendario marcada como tabela de datas. Substitui o Auto Date/Time.
+table dCalendario
+	lineageTag: 53399437-a96c-4c00-910c-77f7b85b2351
+	dataCategory: Time
+
+	/// Chave de data, continua e sem lacunas.
+	column Data
+		dataType: dateTime
+		isKey
+		formatString: dd/MM/yyyy
+		lineageTag: 6e13cf29-4519-46af-9729-a6cd4bd34193
+		summarizeBy: none
+		sourceColumn: Data
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Ano
+		dataType: int64
+		formatString: 0
+		lineageTag: f0bfb606-0a5a-4463-8f63-b2d8a8959d5f
+		summarizeBy: none
+		sourceColumn: Ano
+
+		annotation SummarizationSetBy = Automatic
+
+	column TrimestreNum
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 67b39f3d-0b55-47a6-81eb-609c4883b5b9
+		summarizeBy: none
+		sourceColumn: TrimestreNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column Trimestre
+		dataType: string
+		lineageTag: f3494406-308d-4a22-a6f7-394ff711e5c7
+		summarizeBy: none
+		sourceColumn: Trimestre
+		sortByColumn: TrimestreNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column MesNum
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: b81ac502-8bf4-4b7c-8d83-266fb71a7923
+		summarizeBy: none
+		sourceColumn: MesNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column MesNome
+		dataType: string
+		lineageTag: 3a1e697c-e0b9-42d6-bb23-daaa59e6dd20
+		summarizeBy: none
+		sourceColumn: MesNome
+		sortByColumn: MesNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column MesAbrev
+		dataType: string
+		lineageTag: b710458f-5147-4f40-bff9-9c428c0a7047
+		summarizeBy: none
+		sourceColumn: MesAbrev
+		sortByColumn: MesNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column AnoMesNum
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: afa9ed54-1906-4665-a397-20788c6e20b2
+		summarizeBy: none
+		sourceColumn: AnoMesNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column AnoMes
+		dataType: string
+		lineageTag: af5b81bc-5d6f-429a-a1fb-bdb9ed0765dd
+		summarizeBy: none
+		sourceColumn: AnoMes
+		sortByColumn: AnoMesNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column DiaMes
+		dataType: int64
+		formatString: 0
+		lineageTag: ef36e45f-29f4-4bf3-89bc-7d96360ef35f
+		summarizeBy: none
+		sourceColumn: DiaMes
+
+		annotation SummarizationSetBy = Automatic
+
+	column SemanaAno
+		dataType: int64
+		formatString: 0
+		lineageTag: dce8768a-0bef-40f7-80a5-66516a37c1f6
+		summarizeBy: none
+		sourceColumn: SemanaAno
+
+		annotation SummarizationSetBy = Automatic
+
+	column DiaSemanaNum
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 5352de16-dadc-4419-a5bb-b05533f18d78
+		summarizeBy: none
+		sourceColumn: DiaSemanaNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column DiaSemanaNome
+		dataType: string
+		lineageTag: 828780cf-885e-4537-ba01-2ce0380fded2
+		summarizeBy: none
+		sourceColumn: DiaSemanaNome
+		sortByColumn: DiaSemanaNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column FimDeSemana
+		dataType: boolean
+		formatString: """VERDADEIRO"";""VERDADEIRO"";""FALSO"""
+		lineageTag: e700441b-ce95-4006-a7a0-9758328f82bb
+		summarizeBy: none
+		sourceColumn: FimDeSemana
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dCalendario = m
+		mode: import
+		source =
+				let
+				    // Range derivado dos dados, nao fixo: cobre anos inteiros de fOrders
+				    __datas = List.RemoveNulls(Table.Column(srcEcommerceSales, "order_date")),
+				    __inicio = Date.StartOfYear(List.Min(__datas)),
+				    __fim = Date.EndOfYear(List.Max(__datas)),
+				    Calendario = fxGeraCalendario(__inicio, __fim)
+				in
+				    Calendario
+
+	annotation PBI_ResultType = Table
+

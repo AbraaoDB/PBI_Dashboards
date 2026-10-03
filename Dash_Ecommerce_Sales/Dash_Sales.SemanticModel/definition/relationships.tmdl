@@ -1,0 +1,16 @@
+relationship fOrderItems_fOrders
+	fromColumn: fOrderItems.PedidoSK
+	toColumn: fOrders.PedidoSK
+
+relationship fOrderItems_dProduto
+	fromColumn: fOrderItems.ProdutoSK
+	toColumn: dProduto.ProdutoSK
+
+relationship fOrders_dCliente
+	fromColumn: fOrders.ClienteSK
+	toColumn: dCliente.ClienteSK
+
+relationship fOrders_dCalendario
+	fromColumn: fOrders.OrderDate
+	toColumn: dCalendario.Data
+
